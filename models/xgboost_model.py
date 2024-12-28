@@ -3,36 +3,8 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import sklearn
+from metrics.metrics import Metrics
 
-def mean_squared_error(y_true, y_pred):
-    """
-    Calculate Mean Squared Error (MSE).
-    
-    Parameters:
-    y_true (array-like): Array of real values.
-    y_pred (array-like): Array of predicted values.
-    
-    Returns:
-    float: Mean Squared Error.
-    """
-    n = len(y_true)
-    mse = np.sum((y_true - y_pred) ** 2) / n
-    return mse
-
-def root_mean_squared_error(y_true, y_pred):
-    """
-    Calculate Root Mean Squared Error (RMSE).
-    
-    Parameters:
-    y_true (array-like): Array of real values.
-    y_pred (array-like): Array of predicted values.
-    
-    Returns:
-    float: Root Mean Squared Error.
-    """
-    mse = mean_squared_error(y_true, y_pred)
-    rmse = np.sqrt(mse)
-    return rmse
 
 features = pd.read_parquet('features/processed/features.parquet')
 features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
@@ -62,8 +34,8 @@ model.fit(X_train, y_train)
 
 y_pred = model.predict(X_test)
 
-mse = mean_squared_error(y_test, y_pred)
-rmse = root_mean_squared_error(y_test, y_pred)
+mse = Metrics.mean_squared_error(y_test, y_pred)
+rmse = Metrics.root_mean_squared_error(y_test, y_pred)
 print(f'Mean Squared Error: {mse}')
 print(f'Root Mean Squared Error: {rmse}')
 print('a')
