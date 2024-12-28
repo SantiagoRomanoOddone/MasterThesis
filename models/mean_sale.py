@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from metrics.metrics import Metrics
 
-def analyze_mean_sale_model(cluster_number):
+def analyze_cluster(cluster_number):
     # Load the data from the Parquet file
     features = pd.read_parquet('features/processed/features.parquet')
     features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
@@ -13,9 +13,8 @@ def analyze_mean_sale_model(cluster_number):
     # Get unique combinations of pdv_codigo and codigo_barras_sku
     combinations = cluster_data[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
 
-    # Lists to store the errors
-    mse_list = []
-    rmse_list = []
+    # List to store the results
+    results = []
 
     # Iterate over each combination of pdv_codigo and codigo_barras_sku
     for _, row in combinations.iterrows():
@@ -50,19 +49,24 @@ def analyze_mean_sale_model(cluster_number):
         mse = Metrics.mean_squared_error(y_actual, y_pred_rolling_mean)
         rmse = Metrics.root_mean_squared_error(y_actual, y_pred_rolling_mean)
 
-        # Store the errors in the lists
-        mse_list.append(mse)
-        rmse_list.append(rmse)
+        # Store the results
+        results.append({
+            'pdv_codigo': pdv_codigo,
+            'codigo_barras_sku': codigo_barras_sku,
+            'mse': mse,
+            'rmse': rmse,
+            'model': 'CatBoost'
+        })
 
-    return mse_list, rmse_list
+    return results
 
 if __name__ == '__main__':
     # Call the function to analyze cluster 3
-    mse_list, rmse_list = analyze_mean_sale_model(3)
+    results = analyze_cluster(3)
 
-    # Calculate the mean value of both lists
-    mean_mse = np.mean(mse_list)
-    mean_rmse = np.mean(rmse_list)
+    # Calculate the mean value of MSE and RMSE from the results list
+    mean_mse = np.mean([result['mse'] for result in results])
+    mean_rmse = np.mean([result['rmse'] for result in results])
 
     # Print the results
     print(f"Mean MSE: {mean_mse}") # 3810505572662.3716

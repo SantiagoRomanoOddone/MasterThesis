@@ -15,9 +15,8 @@ def analyze_cluster(cluster_number):
     # Get unique combinations of pdv_codigo and codigo_barras_sku
     combinations = cluster_data[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
 
-    # Lists to store the errors
-    mse_list = []
-    rmse_list = []
+    # List to store the results
+    results = []
 
     # Iterate over each combination of pdv_codigo and codigo_barras_sku
     for _, row in combinations.iterrows():
@@ -59,22 +58,27 @@ def analyze_cluster(cluster_number):
         mse = Metrics.mean_squared_error(y_test, y_pred)
         rmse = Metrics.root_mean_squared_error(y_test, y_pred)
 
-        # Store the errors in the lists
-        mse_list.append(mse)
-        rmse_list.append(rmse)
+        # Store the results
+        results.append({
+            'pdv_codigo': pdv_codigo,
+            'codigo_barras_sku': codigo_barras_sku,
+            'mse': mse,
+            'rmse': rmse,
+            'model': 'XGBoost'
+        })
 
-    return mse_list, rmse_list
+    return results
 
 
 if __name__ == '__main__':
     # Call the function to analyze cluster 3
-    mse_list, rmse_list = analyze_cluster(3)
+    results = analyze_cluster(3)
 
-    # Calculate the mean value of both lists
-    mean_mse = np.mean(mse_list)
-    mean_rmse = np.mean(rmse_list)
+    # Calculate the mean value of MSE and RMSE from the results list
+    mean_mse = np.mean([result['mse'] for result in results])
+    mean_rmse = np.mean([result['rmse'] for result in results])
 
     # Print the results
-    print(f"Mean MSE: {mean_mse}") # 1315136713877.7344
-    print(f"Mean RMSE: {mean_rmse}") # 319744.23335566255
+    print(f"Mean MSE: {mean_mse}")
+    print(f"Mean RMSE: {mean_rmse}")
 
