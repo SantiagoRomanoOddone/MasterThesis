@@ -3,3 +3,6 @@ extraccion_cerveza_refrigerantes.csv
 
 # Features
 *.parquet
+
+
+*.pyc
