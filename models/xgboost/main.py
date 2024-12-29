@@ -1,22 +1,20 @@
+from metrics.metrics import Metrics
+from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
+from models.xgboost.xgboost_model import XGBoostRegressor
+from train.splits.fixed_split import fixed_split
 import pandas as pd
 import numpy as np
-import xgboost as xgb
-from metrics.metrics import Metrics
-from sklearn.metrics import mean_squared_error as mse_sklearn
+
+
 
 def analyze_xgboost(cluster_number):
     print('[START] XGBoost model')
     # Load the data from the Parquet file
-    features = pd.read_parquet('features/processed/features.parquet')
-    features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
+    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
-    # Filter the specific cluster data
     cluster_data = features[features['cluster'] == cluster_number]
-
-    # Get unique combinations of pdv_codigo and codigo_barras_sku
     combinations = cluster_data[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
 
-    # List to store the results
     results = []
 
     # Iterate over each combination of pdv_codigo and codigo_barras_sku
@@ -30,9 +28,7 @@ def analyze_xgboost(cluster_number):
 
         # Split the data into training and testing sets
         split_date = '2024-11-10'
-        train_df = data[data['fecha_comercial'] < split_date]
-        test_df = data[data['fecha_comercial'] >= split_date]
-
+        train_df, test_df = fixed_split(split_date, data)
         if train_df.empty or test_df.empty:
             continue
 
@@ -49,7 +45,7 @@ def analyze_xgboost(cluster_number):
         y_test = test_df[target]
 
         # Train an XGBoost model
-        model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100, learning_rate=0.1, max_depth=6)
+        model = XGBoostRegressor()
         model.fit(X_train, y_train)
 
         # Make predictions
@@ -71,6 +67,36 @@ def analyze_xgboost(cluster_number):
 
     return results
 
+def analyze_xgboost_by_product(cluster_number):
+    print('[START] XGBoost model by product')
+    # Load the data from the Parquet file
+    features = pd.read_parquet('features/processed/features.parquet')
+    features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
+
+    # Filter the specific cluster data
+    cluster_data = features[features['cluster'] == cluster_number]
+
+    # Get unique products (codigo_barras_sku)
+    products = cluster_data['codigo_barras_sku'].unique()
+
+    # List to store the results
+    results = []
+
+    # Iterate over each product
+    for codigo_barras_sku in products:
+        print(f"Processing codigo_barras_sku: {codigo_barras_sku}")
+
+        # Filter the data for the current product
+        data = cluster_data[cluster_data['codigo_barras_sku'] == codigo_barras_sku]
+
+        data = onehot_encoding_pdv(data)
+
+        # Split
+        split_date = '2024-11-10'
+        train_df, test_df = fixed_split(split_date, data)
+
+        print(data.columns)
+    pass
 
 if __name__ == '__main__':
     # Call the function to analyze cluster 3

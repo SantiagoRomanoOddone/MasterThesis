@@ -1,14 +1,15 @@
+
 import pandas as pd
 import numpy as np
-from catboost import CatBoostRegressor
 from metrics.metrics import Metrics
-from sklearn.metrics import mean_squared_error as mse_sklearn
+from models.catboost.catboost_model import CatBoostRegressor
+from train.splits.fixed_split import fixed_split
+
 
 def analyze_catboost(cluster_number):
     print('[START] CatBoost model')
     # Load the data from the Parquet file
-    features = pd.read_parquet('features/processed/features.parquet')
-    features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
+    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
     # Filter the specific cluster data
     cluster_data = features[features['cluster'] == cluster_number]
@@ -16,9 +17,7 @@ def analyze_catboost(cluster_number):
     # Get unique combinations of pdv_codigo and codigo_barras_sku
     combinations = cluster_data[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
 
-    # List to store the results
     results = []
-
     # Iterate over each combination of pdv_codigo and codigo_barras_sku
     for _, row in combinations.iterrows():
         pdv_codigo = row['pdv_codigo']
@@ -30,9 +29,7 @@ def analyze_catboost(cluster_number):
 
         # Split the data into training and testing sets
         split_date = '2024-11-10'
-        train_df = data[data['fecha_comercial'] < split_date]
-        test_df = data[data['fecha_comercial'] >= split_date]
-
+        train_df, test_df = fixed_split(split_date, data)
         if train_df.empty or test_df.empty:
             continue
 
@@ -55,9 +52,8 @@ def analyze_catboost(cluster_number):
             continue
 
         # Train a CatBoost model
-        model = CatBoostRegressor(iterations=100, learning_rate=0.1, depth=6, loss_function='RMSE', verbose=0)
+        model = CatBoostRegressor()
         model.fit(X_train, y_train)
-
         # Make predictions
         y_pred = model.predict(X_test)
 
