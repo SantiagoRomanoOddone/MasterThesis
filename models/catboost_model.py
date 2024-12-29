@@ -4,7 +4,8 @@ from catboost import CatBoostRegressor
 from metrics.metrics import Metrics
 from sklearn.metrics import mean_squared_error as mse_sklearn
 
-def analyze_cluster(cluster_number):
+def analyze_catboost(cluster_number):
+    print('[START] CatBoost model')
     # Load the data from the Parquet file
     features = pd.read_parquet('features/processed/features.parquet')
     features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
@@ -72,13 +73,13 @@ def analyze_cluster(cluster_number):
             'rmse': rmse,
             'model': 'CatBoost'
         })
-
+    print('[END] CatBoost model')
     return results
 
 
 if __name__ == '__main__':
     # Call the function to analyze cluster 3
-    results = analyze_cluster(3)
+    results = analyze_catboost(3)
 
     # Calculate the mean value of MSE and RMSE from the results list
     mean_mse = np.mean([result['mse'] for result in results])

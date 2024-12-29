@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 from metrics.metrics import Metrics
 
-def analyze_cluster(cluster_number):
+def analyze_mean(cluster_number):
+    print('[START] Mean Sale model')
     # Load the data from the Parquet file
     features = pd.read_parquet('features/processed/features.parquet')
     features = features.sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
@@ -58,11 +59,12 @@ def analyze_cluster(cluster_number):
             'model': 'CatBoost'
         })
 
+    print('[END] Mean Sale model')
     return results
 
 if __name__ == '__main__':
     # Call the function to analyze cluster 3
-    results = analyze_cluster(3)
+    results = analyze_mean(3)
 
     # Calculate the mean value of MSE and RMSE from the results list
     mean_mse = np.mean([result['mse'] for result in results])
