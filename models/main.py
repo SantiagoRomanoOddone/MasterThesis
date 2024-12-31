@@ -1,6 +1,6 @@
-from models.catboost.main import catboost, catboost_by_product
-# from models.mean_sale.main import analyze_mean
-from models.xgboost.main import xgboost, xgboost_by_product
+from models.catboost.catboost_main import catboost, catboost_by_product
+from models.mean_sale.mean_sale_main import mean_sale
+from models.xgboost.xgboost_main import xgboost, xgboost_by_product
 from train.splits.fixed_split import fixed_split
 from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 from metrics.metrics import Metrics
@@ -25,11 +25,13 @@ if __name__ == '__main__':
     cb_results_sku = catboost_by_product(features)
     xgb_results = xgboost(features)
     xgb_results_sku = xgboost_by_product(features)
+    mean_sale_results = mean_sale(features)
 
     test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
 
     summary_df = Metrics().create_summary_dataframe(test_df)
 
