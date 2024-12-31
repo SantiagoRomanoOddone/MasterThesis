@@ -7,7 +7,7 @@ from train.splits.fixed_split import fixed_split
 from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 
 
-def catboost_by_pdv_product(cluster_data):
+def catboost(cluster_data):
     print('[START] CatBoost model')
 
     combinations = cluster_data[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
@@ -90,8 +90,8 @@ if __name__ == '__main__':
     train_df, test_df = fixed_split(features)
     
     # Testing catboost models 
+    results = catboost(features)
     results_sku = catboost_by_product(features)
-    results = catboost_by_pdv_product(features)
 
     test_df = test_df.merge(results_sku, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
     test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
