@@ -4,83 +4,99 @@ import numpy as np
 from metrics.metrics import Metrics
 from models.catboost.catboost_model import CatBoostRegressor
 from train.splits.fixed_split import fixed_split
+from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 
 
-def analyze_catboost(cluster_number):
+def catboost_by_pdv_product(cluster_data):
     print('[START] CatBoost model')
-    # Load the data from the Parquet file
-    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
-    # Filter the specific cluster data
-    cluster_data = features[features['cluster'] == cluster_number]
-
-    # Get unique combinations of pdv_codigo and codigo_barras_sku
     combinations = cluster_data[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
 
     results = []
-    # Iterate over each combination of pdv_codigo and codigo_barras_sku
+
     for _, row in combinations.iterrows():
         pdv_codigo = row['pdv_codigo']
         codigo_barras_sku = row['codigo_barras_sku']
         print(f"Processing pdv_codigo: {pdv_codigo}, codigo_barras_sku: {codigo_barras_sku}")
 
-        # Filter the data for the current combination
         data = cluster_data[(cluster_data['codigo_barras_sku'] == codigo_barras_sku) & (cluster_data['pdv_codigo'] == pdv_codigo)]
-
-        # Split the data into training and testing sets
-        split_date = '2024-11-10'
-        train_df, test_df = fixed_split(split_date, data)
+        
+        # Split
+        train_df, test_df = fixed_split(data)
         if train_df.empty or test_df.empty:
             continue
+    
+        if train_df['cant_vta'].nunique() == 1:
+            print(f"Skipping due to equal train targets")
+            continue
+        
+        # Train a CatBoost model
+        model = CatBoostRegressor()
+        model.fit(train_df)
+        # Make predictions
+        result = model.predict(test_df)
 
-        # Prepare the features and target variable
-        features = ['imp_vta', 'stock', 'year', 'month', 'day', 'day_of_week',
-                    'is_weekend', 'quarter', 'week_of_year', 'day_of_year', 'is_month_start', 'is_month_end', 'is_first_week',
-                    'is_last_week', 'rolling_mean_7', 'rolling_std_7', 'rolling_mean_30', 'rolling_std_30', 'lag_1', 'lag_7',
-                    'lag_30', 'diff_1', 'diff_7', 'diff_30']
-        target = 'cant_vta'
+        results.append(result)
 
-        X_train = train_df[features]
-        y_train = train_df[target]
-        X_test = test_df[features]
-        y_test = test_df[target]
+    final_results = pd.concat(results, ignore_index=True)
+    final_results.rename(columns={'cant_vta_pred': 'cant_vta_pred_cb_pdv_sku'}, inplace=True)
+    print('[END] CatBoost model')
+    return final_results
 
 
-        # Check if all train targets are equal
-        if y_train.nunique() == 1:
-            print(f"Skipping pdv_codigo: {pdv_codigo}, codigo_barras_sku: {codigo_barras_sku} due to equal train targets")
+def catboost_by_product(cluster_data):
+    print('[START] CatBoost model by product')
+
+    products = cluster_data['codigo_barras_sku'].unique()
+    results = []
+
+    for codigo_barras_sku in products:
+        print(f"Processing codigo_barras_sku: {codigo_barras_sku}")
+
+        data = cluster_data[cluster_data['codigo_barras_sku'] == codigo_barras_sku]
+        data = onehot_encoding_pdv(data)
+        # Split
+        train_df, test_df = fixed_split(data)
+        if train_df.empty or test_df.empty:
+            continue
+    
+        if train_df['cant_vta'].nunique() == 1:
+            print(f"Skipping codigo_barras_sku: {codigo_barras_sku} due to equal train targets")
             continue
 
         # Train a CatBoost model
         model = CatBoostRegressor()
-        model.fit(X_train, y_train)
+        model.fit(train_df)
         # Make predictions
-        y_pred = model.predict(X_test)
+        result = model.predict(test_df)
 
-        # Evaluate the model using custom MSE and RMSE functions
-        mse = Metrics.mean_squared_error(y_test, y_pred)
-        rmse = Metrics.root_mean_squared_error(y_test, y_pred)
+        results.append(result)
 
-        # Store the results
-        results.append({
-            'pdv_codigo': pdv_codigo,
-            'codigo_barras_sku': codigo_barras_sku,
-            'mse': mse,
-            'rmse': rmse,
-            'model': 'CatBoost'
-        })
-    print('[END] CatBoost model')
-    return results
+    final_results = pd.concat(results, ignore_index=True)
+    final_results.rename(columns={'cant_vta_pred': 'cant_vta_pred_cb_sku'}, inplace=True)
+    print('[END] CatBoost model by product')
+    return final_results
+
 
 
 if __name__ == '__main__':
-    # Call the function to analyze cluster 3
-    results = analyze_catboost(3)
+    
+    cluster_number = 3
 
-    # Calculate the mean value of MSE and RMSE from the results list
-    mean_mse = np.mean([result['mse'] for result in results])
-    mean_rmse = np.mean([result['rmse'] for result in results])
+    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
-    # Print the results
-    print(f"Mean MSE: {mean_mse}")
-    print(f"Mean RMSE: {mean_rmse}")
+    features = features[features['cluster'] == cluster_number]
+    
+    train_df, test_df = fixed_split(features)
+    
+    # Testing catboost models 
+    results_sku = catboost_by_product(features)
+    results = catboost_by_pdv_product(features)
+
+    test_df = test_df.merge(results_sku, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
+    test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
+
+    summary_df = Metrics().create_summary_dataframe(test_df)
+
+    print(summary_df['best_rmse'].value_counts())
+    print(summary_df['best_mse'].value_counts())
