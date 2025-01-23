@@ -6,7 +6,6 @@ from models.catboost.catboost_model import CatBoostRegressor
 from train.splits.fixed_split import fixed_split
 from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 
-
 def catboost(cluster_data):
     print('[START] CatBoost model')
 

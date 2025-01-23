@@ -12,7 +12,7 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    cluster_number = 3
+    cluster_number = 1
 
     features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
