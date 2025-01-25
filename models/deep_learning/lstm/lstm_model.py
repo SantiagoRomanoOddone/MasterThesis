@@ -105,62 +105,56 @@ def prepare_dataframe_for_lstm(df, n_steps):
 if __name__ == '__main__':
 
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-
     cluster_number = 3
-
     features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
     features = features[features['cluster'] == cluster_number]
-
-
     combinations = features[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
 
+    # Testing
     pdv_codigo = 1
     codigo_barras_sku = 7894900027013
 
-
+    # Filter for the specific pdv_codigo and codigo_barras_sku
     data = features[(features['codigo_barras_sku'] == codigo_barras_sku) & (features['pdv_codigo'] == pdv_codigo)]
-
     data = data[['fecha_comercial', 'cant_vta']]
-    data.to_csv('data_pdv_1_sku_7894900027013.csv', index=False)
 
+    # Apply the prepare_dataframe_for_lstm function
     lookback = 7
-    shifted_df = prepare_dataframe_for_lstm(data, lookback)
+    prepared_data = prepare_dataframe_for_lstm(data, lookback)
 
-    shifted_df_as_np = shifted_df.to_numpy()
+    prepared_data.reset_index(inplace=True)
 
+    # Apply train-test split
+    train_df, test_df = fixed_split(prepared_data)
+
+    # Convert train and test data to numpy arrays
     scaler = MinMaxScaler(feature_range=(-1, 1))
-    shifted_df_as_np = scaler.fit_transform(shifted_df_as_np)   
+    train_np = scaler.fit_transform(train_df.drop(columns=['fecha_comercial']).to_numpy())
+    test_np = scaler.transform(test_df.drop(columns=['fecha_comercial']).to_numpy())
 
-    X = shifted_df_as_np[:, 1:]
-    y = shifted_df_as_np[:, 0]
+    # Separate features and labels for train and test sets
+    X_train = train_np[:, 1:]
+    y_train = train_np[:, 0]
 
-    # this is needed for LSTM, it needs to go from the oldest to the newest value. Recurrently getting the most recent value
-    X = dc(np.flip(X, axis=1))
+    X_test = test_np[:, 1:]
+    y_test = test_np[:, 0]
 
-    # the last month as the target aprox
-    split_index = int(len(X) * 0.95)
+    # Flip X arrays for LSTM compatibility
+    X_train = np.flip(X_train, axis=1)
+    X_test = np.flip(X_test, axis=1)
 
-    # split the data
-    X_train = X[:split_index]
-    X_test = X[split_index:]
-
-    y_train = y[:split_index]
-    y_test = y[split_index:]
-    print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
-
-
+    # Reshape for LSTM input
     X_train = X_train.reshape((-1, lookback, 1))
     X_test = X_test.reshape((-1, lookback, 1))
-
     y_train = y_train.reshape((-1, 1))
     y_test = y_test.reshape((-1, 1))
-    print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
 
-    # turning to tensors 
-    X_train = torch.tensor(X_train).float()
-    y_train = torch.tensor(y_train).float()
-    X_test = torch.tensor(X_test).float()
-    y_test = torch.tensor(y_test).float()
+    # Convert to tensors
+    X_train = torch.tensor(X_train.copy()).float()
+    X_test = torch.tensor(X_test.copy()).float()
+    y_train = torch.tensor(y_train.copy()).float()
+    y_test = torch.tensor(y_test.copy()).float()
+
     print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
 
     # Build the dataset
@@ -171,19 +165,19 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
+    # Sanity check for one batch
     for _, batch in enumerate(train_loader):
         x_batch, y_batch = batch[0].to(device), batch[1].to(device)
         print(x_batch.shape, y_batch.shape)
         break
 
-    # 4 hidden units just for now
+    # Define and train the LSTM model
     model = LSTM(1, 4, 1)
     model.to(device)
 
     learning_rate = 0.001
     num_epochs = 10
 
-    # loss function and optimizer
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -191,6 +185,7 @@ if __name__ == '__main__':
         train_one_epoch()
         validate_one_epoch()
 
+    # Evaluate and plot results
     with torch.no_grad():
         predicted = model(X_train.to(device)).to('cpu').numpy()
 
@@ -203,22 +198,19 @@ if __name__ == '__main__':
 
     train_predictions = predicted.flatten()
 
+    # Reverse scaling for train predictions
     dummies = np.zeros((X_train.shape[0], lookback+1))
     dummies[:, 0] = train_predictions
     dummies = scaler.inverse_transform(dummies)
-
     train_predictions = dc(dummies[:, 0])
-    train_predictions
 
-
+    # Reverse scaling for train actual values
     dummies = np.zeros((X_train.shape[0], lookback+1))
     dummies[:, 0] = y_train.flatten()
     dummies = scaler.inverse_transform(dummies)
-
     new_y_train = dc(dummies[:, 0])
-    new_y_train
 
-
+    # Plot train results
     plt.plot(new_y_train, label='Actual Close')
     plt.plot(train_predictions, label='Predicted Close')
     plt.xlabel('Day')
@@ -226,22 +218,20 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
+    # Reverse scaling for test predictions
     test_predictions = model(X_test.to(device)).detach().cpu().numpy().flatten()
-
     dummies = np.zeros((X_test.shape[0], lookback+1))
     dummies[:, 0] = test_predictions
     dummies = scaler.inverse_transform(dummies)
-
     test_predictions = dc(dummies[:, 0])
-    test_predictions
 
+    # Reverse scaling for test actual values
     dummies = np.zeros((X_test.shape[0], lookback+1))
     dummies[:, 0] = y_test.flatten()
     dummies = scaler.inverse_transform(dummies)
-
     new_y_test = dc(dummies[:, 0])
-    new_y_test
 
+    # Plot test results
     plt.plot(new_y_test, label='Actual Close')
     plt.plot(test_predictions, label='Predicted Close')
     plt.xlabel('Day')
