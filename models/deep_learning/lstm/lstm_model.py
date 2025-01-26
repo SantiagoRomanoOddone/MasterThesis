@@ -9,6 +9,18 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 
+def prepare_dataframe_for_lstm(df, n_steps):
+    df = dc(df)
+
+    df.set_index('fecha_comercial', inplace=True)
+
+    for i in range(1, n_steps+1):
+        df[f'cant_vta(t-{i})'] = df['cant_vta'].shift(i)
+
+    df.dropna(inplace=True)
+
+    return df
+
 class TimeSeriesDataset(Dataset):
     def __init__(self, X, y):
         self.X = X
@@ -33,71 +45,59 @@ class LSTM(nn.Module):
                             batch_first=True)
         # the output of the LSTM is the input of the fully connected layer
         self.fc = nn.Linear(hidden_size, 1)
+        self.device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     def forward(self, x):
         batch_size = x.size(0)
         # initialize the hidden state and the cell state
-        h0 = torch.zeros(self.num_stacked_layers, batch_size, self.hidden_size).to(device)
-        c0 = torch.zeros(self.num_stacked_layers, batch_size, self.hidden_size).to(device)
+        h0 = torch.zeros(self.num_stacked_layers, batch_size, self.hidden_size).to(self.device)
+        c0 = torch.zeros(self.num_stacked_layers, batch_size, self.hidden_size).to(self.device)
 
         out, _ = self.lstm(x, (h0, c0))
         out = self.fc(out[:, -1, :])
         return out
 
 
-def train_one_epoch(epoch, model, train_loader, optimizer, loss_function, device):
-    model.train(True)
-    print(f'Epoch: {epoch + 1}')
-    running_loss = 0.0
+    def train_one_epoch(self, epoch, train_loader, optimizer, loss_function):
+        self.train()
+        print(f'Epoch: {epoch + 1}')
+        running_loss = 0.0
 
-    for batch_index, batch in enumerate(train_loader):
-        x_batch, y_batch = batch[0].to(device), batch[1].to(device)
+        for batch_index, batch in enumerate(train_loader):
+            x_batch, y_batch = batch[0].to(self.device), batch[1].to(self.device)
 
-        output = model(x_batch)
-        loss = loss_function(output, y_batch)
-        running_loss += loss.item()
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if batch_index % 100 == 99:  # print every 100 batches
-            avg_loss_across_batches = running_loss / 100
-            print('Batch {0}, Loss: {1:.3f}'.format(batch_index+1,
-                                                    avg_loss_across_batches))
-            running_loss = 0.0
-    print()
-
-def validate_one_epoch(model, test_loader, loss_function, device):
-    model.train(False)
-    running_loss = 0.0
-
-    for batch_index, batch in enumerate(test_loader):
-        x_batch, y_batch = batch[0].to(device), batch[1].to(device)
-
-        with torch.no_grad():
-            output = model(x_batch)
+            output = self(x_batch)
             loss = loss_function(output, y_batch)
             running_loss += loss.item()
 
-    avg_loss_across_batches = running_loss / len(test_loader)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-    print('Val Loss: {0:.3f}'.format(avg_loss_across_batches))
-    print('***************************************************')
-    print()
+            if batch_index % 100 == 99:  # print every 100 batches
+                avg_loss_across_batches = running_loss / 100
+                print('Batch {0}, Loss: {1:.3f}'.format(batch_index+1,
+                                                        avg_loss_across_batches))
+                running_loss = 0.0
+        print()
 
+    def validate_one_epoch(self, test_loader, loss_function):
+        self.eval()
+        running_loss = 0.0
 
-def prepare_dataframe_for_lstm(df, n_steps):
-    df = dc(df)
+        for batch_index, batch in enumerate(test_loader):
+            x_batch, y_batch = batch[0].to(self.device), batch[1].to(self.device)
 
-    df.set_index('fecha_comercial', inplace=True)
+            with torch.no_grad():
+                output = self(x_batch)
+                loss = loss_function(output, y_batch)
+                running_loss += loss.item()
 
-    for i in range(1, n_steps+1):
-        df[f'cant_vta(t-{i})'] = df['cant_vta'].shift(i)
+        avg_loss_across_batches = running_loss / len(test_loader)
 
-    df.dropna(inplace=True)
-
-    return df
+        print('Val Loss: {0:.3f}'.format(avg_loss_across_batches))
+        print('***************************************************')
+        print()
 
 
 def lstm_model(data):
@@ -169,8 +169,8 @@ def lstm_model(data):
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
-        train_one_epoch(epoch, model, train_loader, optimizer, loss_function, device)
-        validate_one_epoch(model, test_loader, loss_function, device)
+        model.train_one_epoch(epoch, train_loader, optimizer, loss_function)
+        model.validate_one_epoch(test_loader, loss_function)
 
     # Evaluate and plot results
     with torch.no_grad():
