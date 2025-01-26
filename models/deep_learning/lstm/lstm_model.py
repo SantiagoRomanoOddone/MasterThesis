@@ -45,7 +45,7 @@ class LSTM(nn.Module):
         return out
 
 
-def train_one_epoch():
+def train_one_epoch(epoch, model, train_loader, optimizer, loss_function, device):
     model.train(True)
     print(f'Epoch: {epoch + 1}')
     running_loss = 0.0
@@ -68,7 +68,7 @@ def train_one_epoch():
             running_loss = 0.0
     print()
 
-def validate_one_epoch():
+def validate_one_epoch(model, test_loader, loss_function, device):
     model.train(False)
     running_loss = 0.0
 
@@ -100,23 +100,10 @@ def prepare_dataframe_for_lstm(df, n_steps):
     return df
 
 
+def lstm_model(data):
 
-
-if __name__ == '__main__':
-
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    cluster_number = 3
-    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
-    features = features[features['cluster'] == cluster_number]
-    combinations = features[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
-
-    # Testing
-    pdv_codigo = 1
-    codigo_barras_sku = 7894900027013
-
-    # Filter for the specific pdv_codigo and codigo_barras_sku
-    data = features[(features['codigo_barras_sku'] == codigo_barras_sku) & (features['pdv_codigo'] == pdv_codigo)]
     data = data[['fecha_comercial', 'cant_vta']]
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     # Apply the prepare_dataframe_for_lstm function
     lookback = 7
@@ -182,8 +169,8 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
-        train_one_epoch()
-        validate_one_epoch()
+        train_one_epoch(epoch, model, train_loader, optimizer, loss_function, device)
+        validate_one_epoch(model, test_loader, loss_function, device)
 
     # Evaluate and plot results
     with torch.no_grad():
@@ -238,3 +225,19 @@ if __name__ == '__main__':
     plt.ylabel('Close')
     plt.legend()
     plt.show()
+
+
+
+if __name__ == '__main__':
+
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    cluster_number = 3
+    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
+    features = features[features['cluster'] == cluster_number]
+    combinations = features[['pdv_codigo', 'codigo_barras_sku']].drop_duplicates()
+
+    # Testing
+    pdv_codigo = 1
+    codigo_barras_sku = 7894900027013
+
+    
