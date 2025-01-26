@@ -1,6 +1,7 @@
 from models.catboost.catboost_main import catboost, catboost_by_product
 from models.mean_sale.mean_sale_main import mean_sale
 from models.xgboost.xgboost_main import xgboost, xgboost_by_product
+from models.deep_learning.lstm.lstm_main import lstm
 from train.splits.fixed_split import fixed_split
 from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 from metrics.metrics import Metrics
@@ -12,12 +13,9 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    cluster_number = 1
-
+    cluster_number = 3
     features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
-
     features = features[features['cluster'] == cluster_number]
-    
     train_df, test_df = fixed_split(features)
     
     # Testing catboost models 
@@ -26,12 +24,14 @@ if __name__ == '__main__':
     xgb_results = xgboost(features)
     xgb_results_sku = xgboost_by_product(features)
     mean_sale_results = mean_sale(features)
+    lstm_results = lstm(features)
 
     test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    test_df = pd.merge(test_df, lstm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
 
     summary_df = Metrics().create_summary_dataframe(test_df)
 
