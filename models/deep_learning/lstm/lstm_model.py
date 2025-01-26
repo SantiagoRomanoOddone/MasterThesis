@@ -153,7 +153,7 @@ def reverse_scaling(predictions, actual, scaler, lookback):
 
 # Main function for LSTM model
 def lstm_model(data):
-    data = data[['fecha_comercial', 'cant_vta']]
+    data = data[['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo', 'cant_vta']]
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     lookback = 7
@@ -163,8 +163,8 @@ def lstm_model(data):
     train_df, test_df = fixed_split(prepared_data)
 
     scaler = MinMaxScaler(feature_range=(-1, 1))
-    train_np = scaler.fit_transform(train_df.drop(columns=['fecha_comercial']).to_numpy())
-    test_np = scaler.transform(test_df.drop(columns=['fecha_comercial']).to_numpy())
+    train_np = scaler.fit_transform(train_df.drop(columns=['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo']).to_numpy())
+    test_np = scaler.transform(test_df.drop(columns=['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo']).to_numpy())
 
     X_train, y_train = train_np[:, 1:], train_np[:, 0]
     X_test, y_test = test_np[:, 1:], test_np[:, 0]
@@ -207,7 +207,7 @@ def lstm_model(data):
     test_df['cant_vta_actual'] = y_test_rescaled
 
     # Reorder and return columns for consistency
-    test_df = test_df[['fecha_comercial', 'cant_vta_pred', 'cant_vta_actual']]
+    test_df = test_df[['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo', 'cant_vta', 'cant_vta_pred']]
 
     # # Plot results
     # plt.figure(figsize=(12, 6))

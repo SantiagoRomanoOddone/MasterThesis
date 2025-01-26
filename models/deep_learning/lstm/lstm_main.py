@@ -2,6 +2,7 @@ import pandas as pd
 
 from train.splits.fixed_split import fixed_split
 from models.deep_learning.lstm.lstm_model import lstm_model
+from metrics.metrics import Metrics
 
 def lstm(cluster_data):
     print('[START] LSTM model')
@@ -28,11 +29,12 @@ def lstm(cluster_data):
         
         # TODO: Clean this up
         result = lstm_model(data)
-        
-
         results.append(result)
- 
-    pass
+    
+    final_results = pd.concat(results, ignore_index=True)
+    final_results.rename(columns={'cant_vta_pred': 'cant_vta_pred_lstm_pdv_sku'}, inplace=True)
+    print('[END] LSTM model')
+    return final_results
 
 
 if __name__ == '__main__':
@@ -45,5 +47,11 @@ if __name__ == '__main__':
     
     train_df, test_df = fixed_split(features)
     
-    # Testing clstm model
+    # Testing LSTM model
     results = lstm(features)
+
+    test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
+    summary_df = Metrics().create_summary_dataframe(test_df)
+
+    print(summary_df['best_rmse'].value_counts())
+    print(summary_df['best_mse'].value_counts())
