@@ -196,26 +196,36 @@ def lstm_model(data):
         model.validate_one_epoch(test_loader, loss_function)
 
     with torch.no_grad():
-        train_predictions = model(X_train.to(device)).to('cpu').numpy().flatten()
+        # train_predictions = model(X_train.to(device)).to('cpu').numpy().flatten()
         test_predictions = model(X_test.to(device)).to('cpu').numpy().flatten()
 
-    train_predictions_rescaled, y_train_rescaled = reverse_scaling(train_predictions, y_train, scaler, lookback)
+    # train_predictions_rescaled, y_train_rescaled = reverse_scaling(train_predictions, y_train, scaler, lookback)
     test_predictions_rescaled, y_test_rescaled = reverse_scaling(test_predictions, y_test, scaler, lookback)
 
-    # Plot results
-    plt.figure(figsize=(12, 6))
-    plt.title('Train Predictions vs Actual')
-    plt.plot(y_train_rescaled, label='Actual')
-    plt.plot(train_predictions_rescaled, label='Predicted')
-    plt.legend()
-    plt.show()
+    # Create DataFrame for predictions
+    test_df['cant_vta_pred'] = test_predictions_rescaled
+    test_df['cant_vta_actual'] = y_test_rescaled
 
-    plt.figure(figsize=(12, 6))
-    plt.title('Test Predictions vs Actual')
-    plt.plot(y_test_rescaled, label='Actual')
-    plt.plot(test_predictions_rescaled, label='Predicted')
-    plt.legend()
-    plt.show()
+    # Reorder and return columns for consistency
+    test_df = test_df[['fecha_comercial', 'cant_vta_pred', 'cant_vta_actual']]
+
+    # # Plot results
+    # plt.figure(figsize=(12, 6))
+    # plt.title('Train Predictions vs Actual')
+    # plt.plot(y_train_rescaled, label='Actual')
+    # plt.plot(train_predictions_rescaled, label='Predicted')
+    # plt.legend()
+    # plt.show()
+
+    # plt.figure(figsize=(12, 6))
+    # plt.title('Test Predictions vs Actual')
+    # plt.plot(y_test_rescaled, label='Actual')
+    # plt.plot(test_predictions_rescaled, label='Predicted')
+    # plt.legend()
+    # plt.show()
+
+    return test_df
+
 
 
 
@@ -233,6 +243,7 @@ if __name__ == '__main__':
     data = cluster_data[(cluster_data['codigo_barras_sku'] == codigo_barras_sku) & (cluster_data['pdv_codigo'] == pdv_codigo)]
 
 
-    lstm_model(data)
+    result = lstm_model(data)
+    print(result)
 
     
