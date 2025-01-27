@@ -187,16 +187,26 @@ def lstm_model(data):
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
-    model = LSTM(1, 64, 2, device)
+    # model = LSTM(1, 64, 2, device)
+    model = LSTM(len(features[1:]), 128, 3, device)
     model.to(device)
 
     loss_function = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+    # early_stopping 
+    early_stopping = EarlyStopping(patience=5)
+
     num_epochs = 20
     for epoch in range(num_epochs):
         model.train_one_epoch(epoch, train_loader, optimizer, loss_function)
         model.validate_one_epoch(test_loader, loss_function)
+
+        val_loss = sum([loss_function(model(batch[0].to(device)), batch[1].to(device)).item() for batch in test_loader]) / len(test_loader)
+        early_stopping(val_loss)
+        if early_stopping.early_stop:
+            print("Early stopping triggered!")
+            break
 
     with torch.no_grad():
         # train_predictions = model(X_train.to(device)).to('cpu').numpy().flatten()
