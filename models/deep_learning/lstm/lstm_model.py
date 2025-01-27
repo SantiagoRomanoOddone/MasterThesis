@@ -153,7 +153,10 @@ def reverse_scaling(predictions, actual, scaler, lookback):
 
 # Main function for LSTM model
 def lstm_model(data):
-    data = data[['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo', 'cant_vta']]
+    # data = data[['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo', 'cant_vta']]
+    excluded_columns = ['nombre_sku', 'imp_vta', 'stock','cluster', 'lag_1', 'lag_7', 'lag_30']
+    data = data.drop(columns=excluded_columns)
+
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     lookback = 7
