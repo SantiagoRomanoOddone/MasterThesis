@@ -159,7 +159,7 @@ def lstm_model(data):
 
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
-    lookback = 7
+    lookback = 30
     prepared_data = prepare_dataframe_for_lstm(data, lookback)
     prepared_data.reset_index(inplace=True)
 
