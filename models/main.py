@@ -32,7 +32,7 @@ def plot_combinations(data, num_combinations):
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_xgb_pdv_sku'], label='XGB PDV SKU Prediction')
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_xgb_sku'], label='XGB SKU Prediction')
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_mean_pdv_sku'], label='Mean PDV SKU Prediction')
-        plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_lstm_pdv_sku'], label='LSTM PDV SKU Prediction')
+        # plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_lstm_pdv_sku'], label='LSTM PDV SKU Prediction')
         
         plt.xlabel('Fecha Comercial')
         plt.ylabel('Sales')
@@ -57,14 +57,14 @@ if __name__ == '__main__':
     xgb_results = xgboost(features)
     xgb_results_sku = xgboost_by_product(features)
     mean_sale_results = mean_sale(features)
-    lstm_results = lstm(features)
+    # lstm_results = lstm(features)
 
     test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, lstm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, lstm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
 
     summary_df = Metrics().create_summary_dataframe(test_df)
 
