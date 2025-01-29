@@ -11,9 +11,5 @@ This project is all about **predicting demand**—but not just for a single prod
 ## Why This Matters  
 Understanding demand fluctuations is **critical for inventory management, logistics, and business strategy**. If we can predict demand accurately, we can optimize stock levels, reduce waste, and make smarter decisions.  
 
-## Where This is Going  
-- **Deep dive into model comparisons**: Why does LSTM work for some series but fail for others?  
-- **Automating model selection**: Can we predict which model will perform best for a given product-store pair?  
-- **Uncovering hidden patterns**: What do the "hard-to-predict" time series have in common?  
 
-This project is a mix of **data science, experimentation, and real-world problem-solving**—because forecasting isn’t just about numbers; it’s about making better decisions.  
+This project is a mix of **data science, machine learning, experimentation, and real-world problem-solving**—because forecasting isn’t just about numbers; it’s about making better decisions.  
