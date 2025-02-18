@@ -58,18 +58,6 @@ class TimeSeriesDataset(Dataset):
 
     def __getitem__(self, i):
         return self.X[i], self.y[i]
-
-
-class TimeSeriesDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-
-    def __len__(self):
-        return len(self.X)
-
-    def __getitem__(self, i):
-        return self.X[i], self.y[i]
     
 class EarlyStopping:
     def __init__(self, patience=3):
@@ -151,12 +139,12 @@ def reverse_scaling(predictions, actual, scaler, lookback):
 
     return predictions_rescaled, actual_rescaled
 
+
 # Main function for LSTM model
 def lstm_model(data):
-    # data = data[['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo', 'cant_vta']]
-    excluded_columns = ['nombre_sku', 'imp_vta', 'stock','cluster', 'lag_1', 'lag_7', 'lag_30']
-    data = data.drop(columns=excluded_columns)
-
+    # excluded_columns = ['nombre_sku', 'imp_vta', 'stock','cluster', 'lag_1', 'lag_7', 'lag_30']
+    # data = data.drop(columns=excluded_columns)
+    data = data[['fecha_comercial', 'codigo_barras_sku', 'pdv_codigo', 'cant_vta']]
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     lookback = 30
@@ -187,8 +175,7 @@ def lstm_model(data):
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
-    # model = LSTM(1, 64, 2, device)
-    model = LSTM(len(features[1:]), 128, 3, device)
+    model = LSTM(1, 64, 2, device)
     model.to(device)
 
     loss_function = nn.MSELoss()
