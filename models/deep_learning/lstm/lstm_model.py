@@ -33,21 +33,6 @@ logger = logging.getLogger()
 
 
 # ----Classes   
-class DataScaler:
-    def __init__(self):
-        self.scaler = MinMaxScaler(feature_range=(-1, 1))
-
-    def fit_transform(self, df, columns_to_scale):
-        scaled_data = self.scaler.fit_transform(df[columns_to_scale])
-        df[columns_to_scale] = scaled_data
-        return df
-
-    def inverse_transform(self, array, feature_count):
-        dummies = np.zeros((array.shape[0], feature_count))
-        dummies[:, 0] = array
-        return self.scaler.inverse_transform(dummies)[:, 0]
-
-
 class TimeSeriesDataset(Dataset):
     def __init__(self, X, y):
         self.X = X
@@ -116,16 +101,15 @@ class LSTM(nn.Module):
     def validate_one_epoch(self, test_loader, loss_function):
         self.eval()
         running_loss = 0.0
-
         with torch.no_grad():
             for batch in test_loader:
                 x_batch, y_batch = batch[0].to(self.device), batch[1].to(self.device)
                 output = self(x_batch)
                 loss = loss_function(output, y_batch)
                 running_loss += loss.item()
-
         avg_loss = running_loss / len(test_loader)
         print(f'Validation Loss: {avg_loss:.4f}')
+        return avg_loss  # Return the validation loss
 
 # Function to reverse scaling
 def reverse_scaling(predictions, actual, scaler, lookback):
@@ -183,17 +167,23 @@ def lstm_model(data):
 
     # early_stopping 
     early_stopping = EarlyStopping(patience=5)
+    best_val_loss = float('inf')
 
     num_epochs = 20
     for epoch in range(num_epochs):
         model.train_one_epoch(epoch, train_loader, optimizer, loss_function)
-        model.validate_one_epoch(test_loader, loss_function)
+        val_loss = model.validate_one_epoch(test_loader, loss_function)  # Modified to return val_loss
 
-        val_loss = sum([loss_function(model(batch[0].to(device)), batch[1].to(device)).item() for batch in test_loader]) / len(test_loader)
+        # Early stopping
         early_stopping(val_loss)
         if early_stopping.early_stop:
             print("Early stopping triggered!")
             break
+
+        # # Save the best model
+        # if val_loss < best_val_loss:
+        #     best_val_loss = val_loss
+        #     torch.save(model.state_dict(), 'best_model.pth')
 
     with torch.no_grad():
         # train_predictions = model(X_train.to(device)).to('cpu').numpy().flatten()
