@@ -42,7 +42,6 @@ def rnn(cluster_data):
 
 
 
-# Update your main.py logic to use PyTorchRNNRegressor
 if __name__ == '__main__':
     cluster_number = 3
 
