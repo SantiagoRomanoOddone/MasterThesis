@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from gluonts.mx.model.deepar import DeepAREstimator
-# from gluonts.torch.model.deepar import DeepAREstimator
 from gluonts.mx.trainer import Trainer
 from gluonts.dataset.common import ListDataset
 import mxnet as mx
@@ -29,16 +28,18 @@ class DeepARModel:
         self.model = DeepAREstimator(
             freq=self.freq,
             prediction_length=self.prediction_length,
-            trainer=Trainer(epochs=50, ctx=mx.cpu())
+            trainer=Trainer(epochs=5, ctx=mx.cpu())
         ).train(training_data=train_ds)
 
     def predict(self, test_data):
         test_ds = self.format_data(test_data)
         predictor = self.model.predict(test_ds)
-        
+
         predictions = []
+        identifiers = []
         for entry in predictor:
             pred_series = entry.mean.tolist()
             predictions.append(pred_series)
-        
-        return predictions
+            identifiers.append(entry.item_id)
+
+        return predictions, identifiers  # Return predictions + item IDs for mapping

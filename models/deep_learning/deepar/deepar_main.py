@@ -2,28 +2,43 @@ import pandas as pd
 from models.deep_learning.deepar.deepar_model import DeepARModel
 from train.splits.fixed_split import fixed_split
 from metrics.metrics import Metrics
+import numpy as np
 
 def deepar(cluster_data):
     print('[START] DeepAR model')
 
     # Split data
-    train_df,  = fixed_split(features)
+    train_df, test_df = fixed_split(cluster_data)
     
     model = DeepARModel()
     model.train(train_df)
-    predictions = model.predict(test_df)
-    
+
+    # Get predictions and corresponding item IDs
+    predictions, identifiers = model.predict(test_df)
+
+    # Convert predictions into a structured DataFrame
     results = []
-    for (pdv_codigo, codigo_barras_sku), prediction in zip(cluster_data.groupby(['pdv_codigo', 'codigo_barras_sku']), predictions):
-        df_pred = prediction.to_dataframe()
-        df_pred['pdv_codigo'] = pdv_codigo
-        df_pred['codigo_barras_sku'] = codigo_barras_sku
+    for item_id, pred_series in zip(identifiers, predictions):
+        pdv_codigo, codigo_barras_sku = item_id.split('_')  # Extract identifiers
+        
+        # Get the first date from test_df for this SKU
+        start_date = test_df[test_df['codigo_barras_sku'] == int(codigo_barras_sku)]['fecha_comercial'].min()
+        
+        # Generate date range to ensure correct length
+        dates = pd.date_range(start=start_date, periods=len(pred_series), freq='D')
+
+        df_pred = pd.DataFrame({
+            'fecha_comercial': dates,
+            'codigo_barras_sku': int(codigo_barras_sku),
+            'pdv_codigo': int(pdv_codigo),
+            'cant_vta_pred_deepar': np.maximum(0, pred_series)  # Avoid negatives
+        })
         results.append(df_pred)
-    
+
+
     final_results = pd.concat(results, ignore_index=True)
-    final_results.rename(columns={'prediction': 'cant_vta_pred_deepar'}, inplace=True)
+
     print('[END] DeepAR model')
-    
     return final_results
 
 if __name__ == '__main__':
