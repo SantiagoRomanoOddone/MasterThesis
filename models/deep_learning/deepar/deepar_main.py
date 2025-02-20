@@ -5,10 +5,13 @@ from metrics.metrics import Metrics
 
 def deepar(cluster_data):
     print('[START] DeepAR model')
+
+    # Split data
+    train_df,  = fixed_split(features)
     
     model = DeepARModel()
-    model.train(cluster_data)
-    predictions = model.predict(cluster_data)
+    model.train(train_df)
+    predictions = model.predict(test_df)
     
     results = []
     for (pdv_codigo, codigo_barras_sku), prediction in zip(cluster_data.groupby(['pdv_codigo', 'codigo_barras_sku']), predictions):
