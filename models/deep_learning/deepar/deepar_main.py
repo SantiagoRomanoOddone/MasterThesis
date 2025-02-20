@@ -33,7 +33,7 @@ if __name__ == '__main__':
     train_df, test_df = fixed_split(features)
 
     # Train and evaluate DeepAR model
-    results = deepar(train_df)
+    results = deepar(features)
 
     # Merge predictions with test data
     test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo', 'fecha_comercial'], how='left')
