@@ -2,12 +2,11 @@ from models.catboost.catboost_main import catboost, catboost_by_product
 from models.mean_sale.mean_sale_main import mean_sale
 from models.xgboost.xgboost_main import xgboost, xgboost_by_product
 from models.deep_learning.lstm.lstm_main import lstm
+from models.deep_learning.deepar.deepar_main import deepar
 from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
-from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 import matplotlib.pyplot as plt
 from metrics.metrics import Metrics
-import numpy as np
 import pandas as pd
 
 def plot_combinations(data, num_combinations):
@@ -34,6 +33,7 @@ def plot_combinations(data, num_combinations):
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_xgb_sku'], label='XGB SKU Prediction')
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_lgbm_pdv_sku'], label='LGBM PDV SKU Prediction')
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_lgbm_sku'], label='LGBM SKU Prediction')
+        plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_deepar'], label='DeepAR Prediction')
         plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_mean_pdv_sku'], label='Mean PDV SKU Prediction')
         # plt.plot(subset['fecha_comercial'], subset['cant_vta_pred_lstm_pdv_sku'], label='LSTM PDV SKU Prediction')
         
@@ -48,7 +48,7 @@ def plot_combinations(data, num_combinations):
 
 if __name__ == '__main__':
 
-    cluster_number = 0
+    cluster_number = 3
     features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
     features = features[features['cluster'] == cluster_number]
@@ -62,6 +62,7 @@ if __name__ == '__main__':
     mean_sale_results = mean_sale(features)
     lgbm_results = lightgbm(features)
     lgbm_results_sku = lightgbm_by_product(features)
+    deepar_results = deepar(features)
     # lstm_results = lstm(features)
 
     test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-
+    test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lstm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
 

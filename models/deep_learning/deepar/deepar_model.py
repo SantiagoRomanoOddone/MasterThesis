@@ -28,7 +28,7 @@ class DeepARModel:
         self.model = DeepAREstimator(
             freq=self.freq,
             prediction_length=self.prediction_length,
-            trainer=Trainer(epochs=5, ctx=mx.cpu())
+            trainer=Trainer(epochs=50, ctx=mx.cpu())
         ).train(training_data=train_ds)
 
     def predict(self, test_data):
