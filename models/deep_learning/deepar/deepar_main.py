@@ -3,11 +3,14 @@ from models.deep_learning.deepar.deepar_model import DeepARModel
 from train.splits.fixed_split import fixed_split
 from metrics.metrics import Metrics
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 def deepar(cluster_data):
     print('[START] DeepAR model')
 
-    cluster_data['cant_vta'] = np.log1p(cluster_data['cant_vta'])
+    scaler = StandardScaler()
+    cluster_data['cant_vta'] = scaler.fit_transform(cluster_data[['cant_vta']])
+    # cluster_data['cant_vta'] = np.log1p(cluster_data['cant_vta'])
 
     # Split data
     train_df, test_df = fixed_split(cluster_data)
@@ -38,7 +41,8 @@ def deepar(cluster_data):
         results.append(df_pred)
 
     final_results = pd.concat(results, ignore_index=True)
-    final_results['cant_vta_pred_deepar'] = np.expm1(final_results['cant_vta_pred_deepar'])
+    # final_results['cant_vta_pred_deepar'] = np.expm1(final_results['cant_vta_pred_deepar'])
+    final_results['cant_vta_pred_deepar'] = scaler.inverse_transform(final_results[['cant_vta_pred_deepar']])
 
     print('[END] DeepAR model')
     return final_results
