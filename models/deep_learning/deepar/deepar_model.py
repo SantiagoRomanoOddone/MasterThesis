@@ -16,19 +16,44 @@ class DeepARModel:
         for (pdv_codigo, codigo_barras_sku), group in data.groupby(['pdv_codigo', 'codigo_barras_sku']):
             target = group['cant_vta'].tolist()
             start = pd.to_datetime(group['fecha_comercial'].min())
+
+            # Dynamic features (date-based)
+            dynamic_feat = [
+                group['day_of_week'].tolist(),
+                group['is_weekend'].tolist(),
+                group['month'].tolist(),
+                group['quarter'].tolist(),
+                group['week_of_year'].tolist(),
+                group['is_month_start'].tolist(),
+                group['is_month_end'].tolist(),
+                group['is_first_week'].tolist(),
+                group['is_last_week'].tolist()
+            ]
+
+            # Static features (store ID, product ID)
+            static_cat = [pdv_codigo, codigo_barras_sku]
+
             series.append({
                 "start": start,
                 "target": target,
-                "item_id": f"{pdv_codigo}_{codigo_barras_sku}"
+                "item_id": f"{pdv_codigo}_{codigo_barras_sku}",
+                "feat_static_cat": static_cat,
+                "feat_dynamic_real": dynamic_feat
             })
+        
         return ListDataset(series, freq=self.freq)
 
     def train(self, train_data):
         train_ds = self.format_data(train_data)
+        
         self.model = DeepAREstimator(
             freq=self.freq,
             prediction_length=self.prediction_length,
-            trainer=Trainer(epochs=50, ctx=mx.cpu())
+            context_length=self.prediction_length * 2,  # Lookback window
+            num_cells=100,  # Increase model complexity
+            num_layers=3,   # Deeper network
+            dropout_rate=0.1,
+            trainer=Trainer(epochs=100, learning_rate=0.001, ctx=mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu())
         ).train(training_data=train_ds)
 
     def predict(self, test_data):
