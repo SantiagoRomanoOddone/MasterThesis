@@ -15,7 +15,7 @@ class DeepARModel:
         series = []
         for (pdv_codigo, codigo_barras_sku), group in data.groupby(['pdv_codigo', 'codigo_barras_sku']):
 
-            target = group['cant_vta'].tolist() if is_train else None   
+            target = group['cant_vta'].tolist() if is_train else [np.nan] * len(group)
             
             start = pd.to_datetime(group['fecha_comercial'].min())
 
