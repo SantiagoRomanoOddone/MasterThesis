@@ -1,5 +1,7 @@
 # MasterThesis: Forecasting Demand Across Products and Stores  
 
+In retail businesses, forecasting demand is crucial for having the right inventory available at the right time at the right place.
+
 ## What’s This About?  
 This project is all about **predicting demand**—but not just for a single product or store. The challenge is to build and compare multiple time series models across a **huge number of product-store combinations**. Some patterns are easy to predict, others are chaotic. The goal? **Find out what works best, why, and how to improve it.**  
 
