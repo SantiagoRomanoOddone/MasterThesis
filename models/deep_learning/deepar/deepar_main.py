@@ -3,48 +3,42 @@ from models.deep_learning.deepar.deepar_model import DeepARModel
 from train.splits.fixed_split import fixed_split
 from metrics.metrics import Metrics
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 
 def deepar(cluster_data):
-    print('[START] DeepAR model')
-
-    scaler = StandardScaler()
-    cluster_data['cant_vta'] = scaler.fit_transform(cluster_data[['cant_vta']])
-    # cluster_data['cant_vta'] = np.log1p(cluster_data['cant_vta'])
-
-    # Split data
+    # Realiza el split: train_df contiene la serie histórica y test_df el horizonte real (para evaluar)
     train_df, test_df = fixed_split(cluster_data)
-    
+
+    # Entrena el modelo con la parte histórica
     model = DeepARModel()
     model.train(train_df)
 
-    # Get predictions and corresponding item IDs
-    predictions, identifiers = model.predict(test_df)
+    # Para la predicción se utiliza la serie histórica (train_df)
+    predictions, identifiers = model.predict(train_df)
 
-    # Convert predictions into a structured DataFrame
+    # Se construye un DataFrame con los pronósticos utilizando las fechas del horizonte real (test_df)
     results = []
     for item_id, pred_series in zip(identifiers, predictions):
-        pdv_codigo, codigo_barras_sku = item_id.split('_')  # Extract identifiers
+        pdv_codigo, codigo_barras_sku = item_id.split('_')
         
-        # Get the first date from test_df for this SKU
-        start_date = test_df[test_df['codigo_barras_sku'] == int(codigo_barras_sku)]['fecha_comercial'].min()
+        # Se obtiene la primera fecha del horizonte de pronóstico para cada SKU (de test_df)
+        sku_mask = test_df['codigo_barras_sku'] == int(codigo_barras_sku)
+        start_date = test_df.loc[sku_mask, 'fecha_comercial'].min()
         
-        # Generate date range to ensure correct length
+        if start_date is pd.NaT:
+            continue
+        # Se crea un rango de fechas con longitud igual al horizonte (prediction_length)
         dates = pd.date_range(start=start_date, periods=len(pred_series), freq='D')
 
         df_pred = pd.DataFrame({
             'fecha_comercial': dates,
             'codigo_barras_sku': int(codigo_barras_sku),
             'pdv_codigo': int(pdv_codigo),
-            'cant_vta_pred_deepar': np.maximum(0, pred_series)  # Avoid negatives
+            'cant_vta_pred_deepar': np.maximum(0, pred_series)
         })
         results.append(df_pred)
 
     final_results = pd.concat(results, ignore_index=True)
-    # final_results['cant_vta_pred_deepar'] = np.expm1(final_results['cant_vta_pred_deepar'])
-    final_results['cant_vta_pred_deepar'] = scaler.inverse_transform(final_results[['cant_vta_pred_deepar']])
-
-    print('[END] DeepAR model')
     return final_results
 
 if __name__ == '__main__':
@@ -67,3 +61,5 @@ if __name__ == '__main__':
 
     print(summary_df['best_rmse'].value_counts())
     print(summary_df['best_mse'].value_counts())
+
+
