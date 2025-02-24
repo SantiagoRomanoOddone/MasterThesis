@@ -20,6 +20,7 @@ class DeepARModel:
         If forecast_data is provided, the historical series is extended by:
           - Padding the target with np.nan for the forecast horizon.
           - Concatenating the dynamic features for the forecast period.
+        Also applies a log1p transformation to the known (historical) target values.
         """
         dynamic_cols = [
             'day_of_week', 'is_weekend', 'month', 'quarter',
@@ -38,7 +39,10 @@ class DeepARModel:
                 (historical_data['codigo_barras_sku'] == codigo_barras_sku)
             ].sort_values('fecha_comercial')
             
+            # Retrieve the target values and apply normalization (log1p transform)
             target = hist_group['cant_vta'].tolist()
+            target = [np.log1p(x) for x in target]  # transform historical part
+
             dyn_features = {col: hist_group[col].tolist() for col in dynamic_cols}
             
             # If forecast_data is provided, extend the series with forecast information.
@@ -56,7 +60,7 @@ class DeepARModel:
                 forecast_horizon = self.prediction_length
                 forecast_group = forecast_group.head(forecast_horizon)
                 
-                # Extend the target with np.nan values for the forecast period.
+                # Append np.nan for the forecast period (we don't have target values)
                 target += [np.nan] * forecast_horizon
                 
                 # Extend each dynamic feature with the future values.
@@ -103,7 +107,7 @@ class DeepARModel:
             num_layers=4,
             dropout_rate=0.1,
             trainer=Trainer(
-                epochs=50,           
+                epochs=50,           # Adjust epochs as needed
                 learning_rate=0.001,
                 ctx=mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu()
             )
@@ -113,15 +117,6 @@ class DeepARModel:
         """
         Produces forecasts using historical data extended with forecast information.
         The target is extended (historical data + np.nan) and dynamic features are concatenated.
+        After prediction, the output is inverse-transformed (expm1) to revert the log1p normalization.
         """
-        forecast_ds = self.format_data(historical_data, forecast_data,
-                                       pdv_encoder=self.pdv_encoder, sku_encoder=self.sku_encoder)
-        predictor = self.model.predict(forecast_ds)
-        predictions = []
-        identifiers = []
-        for entry in predictor:
-            # Compute the mean forecast from the sample trajectories.
-            pred_series = entry.samples.mean(axis=0).tolist()
-            predictions.append(pred_series)
-            identifiers.append(entry.item_id)
-        return predictions, identifiers
+       
