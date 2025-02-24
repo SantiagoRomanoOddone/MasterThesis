@@ -3,6 +3,7 @@ import numpy as np
 from gluonts.mx.model.deepar import DeepAREstimator
 from gluonts.mx.trainer import Trainer
 from gluonts.dataset.common import ListDataset
+from sklearn.preprocessing import LabelEncoder
 import mxnet as mx
 
 class DeepARModel:
@@ -87,7 +88,6 @@ class DeepARModel:
 
     def train(self, train_data, forecast_data=None):
         # Create encoders for the static features based on the training data.
-        from sklearn.preprocessing import LabelEncoder
         self.pdv_encoder = LabelEncoder().fit(train_data['pdv_codigo'].unique())
         self.sku_encoder = LabelEncoder().fit(train_data['codigo_barras_sku'].unique())
         
