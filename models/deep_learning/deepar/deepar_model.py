@@ -10,14 +10,15 @@ class DeepARModel:
         self.freq = freq
         self.prediction_length = prediction_length
         self.model = None
+        self.pdv_encoder = None
+        self.sku_encoder = None
 
-    def format_data(self, historical_data, forecast_data=None):
+    def format_data(self, historical_data, forecast_data=None, pdv_encoder=None, sku_encoder=None):
         """
         Formats data into a ListDataset for GluonTS.
-        If forecast_data is None, it is training mode and uses the full historical series.
-        If forecast_data is provided, the historical series is extended with the future horizon:
-          - The target is extended with [NaN] for the forecast period.
-          - Dynamic features are concatenated with their corresponding future values.
+        If forecast_data is provided, the historical series is extended by:
+          - Padding the target with np.nan for the forecast horizon.
+          - Concatenating the dynamic features for the forecast period.
         """
         dynamic_cols = [
             'day_of_week', 'is_weekend', 'month', 'quarter',
@@ -26,11 +27,11 @@ class DeepARModel:
         ]
         
         series = []
-        # Get all items present in the historical dataset
+        # Obtain all unique (pdv_codigo, codigo_barras_sku) combinations.
         items = historical_data.groupby(['pdv_codigo', 'codigo_barras_sku']).groups.keys()
         
         for pdv_codigo, codigo_barras_sku in items:
-            # Extract historical data for the item and sort by date
+            # Extract historical data for the item and sort by date.
             hist_group = historical_data[
                 (historical_data['pdv_codigo'] == pdv_codigo) &
                 (historical_data['codigo_barras_sku'] == codigo_barras_sku)
@@ -39,29 +40,40 @@ class DeepARModel:
             target = hist_group['cant_vta'].tolist()
             dyn_features = {col: hist_group[col].tolist() for col in dynamic_cols}
             
-            # If forecast_data is provided, extend the series with forecast information
+            # If forecast_data is provided, extend the series with forecast information.
             if forecast_data is not None:
                 forecast_group = forecast_data[
                     (forecast_data['pdv_codigo'] == pdv_codigo) &
                     (forecast_data['codigo_barras_sku'] == codigo_barras_sku)
                 ].sort_values('fecha_comercial')
                 
-                # Skip the series if no future data is available
+                # Skip the series if no future data is available.
                 if forecast_group.empty:
                     continue
 
-                # Extend the target with NaNs for the future horizon
-                target += [np.nan] * len(forecast_group)
+                # Ensure the forecast horizon exactly equals prediction_length.
+                forecast_horizon = self.prediction_length
+                forecast_group = forecast_group.head(forecast_horizon)
                 
-                # Extend each dynamic feature with the future values
+                # Extend the target with np.nan values for the forecast period.
+                target += [np.nan] * forecast_horizon
+                
+                # Extend each dynamic feature with the future values.
                 for col in dynamic_cols:
                     dyn_features[col].extend(forecast_group[col].tolist())
             
-            # Convert dynamic features into a list of lists (maintaining order)
+            # Build dynamic features in the expected format (list of lists: one per feature).
             dynamic_feat = [dyn_features[col] for col in dynamic_cols]
-            
             start = pd.to_datetime(hist_group['fecha_comercial'].min())
-            static_cat = [pdv_codigo, codigo_barras_sku]
+            
+            # Encode static categorical features if encoders are provided.
+            if pdv_encoder is not None and sku_encoder is not None:
+                static_cat = [
+                    int(pdv_encoder.transform([pdv_codigo])[0]),
+                    int(sku_encoder.transform([codigo_barras_sku])[0])
+                ]
+            else:
+                static_cat = [pdv_codigo, codigo_barras_sku]
             
             series.append({
                 "start": start,
@@ -73,8 +85,16 @@ class DeepARModel:
         
         return ListDataset(series, freq=self.freq)
 
-    def train(self, train_data):
-        train_ds = self.format_data(train_data)
+    def train(self, train_data, forecast_data=None):
+        # Create encoders for the static features based on the training data.
+        from sklearn.preprocessing import LabelEncoder
+        self.pdv_encoder = LabelEncoder().fit(train_data['pdv_codigo'].unique())
+        self.sku_encoder = LabelEncoder().fit(train_data['codigo_barras_sku'].unique())
+        
+        # Format the training dataset, including future dynamic features if provided.
+        train_ds = self.format_data(train_data, forecast_data=forecast_data,
+                                    pdv_encoder=self.pdv_encoder, sku_encoder=self.sku_encoder)
+        
         self.model = DeepAREstimator(
             freq=self.freq,
             prediction_length=self.prediction_length,
@@ -91,15 +111,16 @@ class DeepARModel:
 
     def predict(self, historical_data, forecast_data):
         """
-        Predicts by using the historical data and extending it with forecast_data.
-        The target is extended (historical + NaNs) and dynamic features are concatenated.
+        Produces forecasts using historical data extended with forecast information.
+        The target is extended (historical data + np.nan) and dynamic features are concatenated.
         """
-        forecast_ds = self.format_data(historical_data, forecast_data)
+        forecast_ds = self.format_data(historical_data, forecast_data,
+                                       pdv_encoder=self.pdv_encoder, sku_encoder=self.sku_encoder)
         predictor = self.model.predict(forecast_ds)
         predictions = []
         identifiers = []
         for entry in predictor:
-            # Compute the mean forecast from the sample trajectories
+            # Compute the mean forecast from the sample trajectories.
             pred_series = entry.samples.mean(axis=0).tolist()
             predictions.append(pred_series)
             identifiers.append(entry.item_id)

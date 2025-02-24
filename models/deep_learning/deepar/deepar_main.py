@@ -8,14 +8,15 @@ def deepar(cluster_data):
     # Split data: train_df contains historical series and test_df contains the forecast horizon (for evaluation)
     train_df, test_df = fixed_split(cluster_data)
 
-    # Train the model using the historical data
+    # Train the model using historical data along with forecast dynamic features.
+    # (Passing test_df so that known future covariates are used during training.)
     model = DeepARModel()
-    model.train(train_df)
+    model.train(train_df, forecast_data=test_df)
 
     # For prediction, use forecast information (test_df) to get future dynamic features
     predictions, identifiers = model.predict(train_df, test_df)
 
-    # Construct a DataFrame with forecasts using the dates from the forecast horizon
+    # Construct a DataFrame with forecasts using the dates from the forecast horizon.
     results = []
     for item_id, pred_series in zip(identifiers, predictions):
         pdv_codigo, codigo_barras_sku = item_id.split('_')
@@ -37,6 +38,7 @@ def deepar(cluster_data):
 
     final_results = pd.concat(results, ignore_index=True)
     return final_results
+
 
 if __name__ == '__main__':
     cluster_number = 3
