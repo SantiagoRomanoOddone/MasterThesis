@@ -87,7 +87,8 @@ def deepar(features):
         })
         results.append(df_pred)
 
-    return pd.concat(results, ignore_index=True)
+    final_results = pd.concat(results, ignore_index=True)
+    return final_results
 
 if __name__ == '__main__':
     cluster_number = 3
