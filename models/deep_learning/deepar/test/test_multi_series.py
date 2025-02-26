@@ -7,11 +7,11 @@ from metrics.metrics import Metrics
 
 
 
-def deepar(features):
 
+def deepar(features):
     # Ensure the date column is datetime
     features['fecha_comercial'] = pd.to_datetime(features['fecha_comercial'])
-
+    
     # Define the forecast horizon (e.g., 31 days)
     prediction_length = 31
 
@@ -24,12 +24,14 @@ def deepar(features):
             continue
         target = group['cant_vta'].values
         start_date = group['fecha_comercial'].iloc[0]
-        # Define static features (e.g., store and product)
+        # Define static features and create an explicit identifier
         feat_static_cat = [int(store), int(sku)]
+        item_id = f"{int(store)}_{int(sku)}"
         series_list.append({
             "start": start_date,
             "target": target,
-            "feat_static_cat": feat_static_cat
+            "feat_static_cat": feat_static_cat,
+            "item_id": item_id
         })
 
     # Create the full dataset (with complete series) for prediction
@@ -42,15 +44,16 @@ def deepar(features):
             train_series_list.append({
                 "start": series["start"],
                 "target": series["target"][:-prediction_length],
-                "feat_static_cat": series["feat_static_cat"]
+                "feat_static_cat": series["feat_static_cat"],
+                "item_id": series["item_id"]
             })
     train_dataset = ListDataset(train_series_list, freq="D")
 
-    # Train the global DeepAR model
+    # Train the global DeepAR model (adjust epochs/hyperparameters as needed)
     model = DeepAREstimator(
         prediction_length=prediction_length,
         freq="D",
-        trainer_kwargs={"max_epochs": 5}  # Adjust epochs as needed
+        trainer_kwargs={"max_epochs": 5}
     ).train(train_dataset)
 
     # Generate forecasts using the full dataset
@@ -60,18 +63,17 @@ def deepar(features):
     # Build a DataFrame with forecasts for each series
     results = []
     for series, forecast in zip(series_list, forecasts):
-        # Retrieve static features (store and sku)
-        store, sku = series["feat_static_cat"]
-
-        # Retrieve the series start date
+        # Retrieve the identifier (store and sku) from item_id
+        item_id = series["item_id"]
+        store, sku = item_id.split('_')
+        
+        # Retrieve the series start date and convert if needed
         start_date = series["start"]
-        # Convert start_date to Timestamp if it is a Period
         if isinstance(start_date, pd.Period):
             start_date = start_date.to_timestamp()
             
-        # Compute forecast start: last training date + 1 day.
+        # Compute forecast start: last training observation date + 1 day
         forecast_start_date = start_date + pd.Timedelta(days=len(series["target"]) - prediction_length)
-        # Convert forecast_start_date if needed
         if isinstance(forecast_start_date, pd.Period):
             forecast_start_date = forecast_start_date.to_timestamp()
 
@@ -83,12 +85,17 @@ def deepar(features):
             'fecha_comercial': dates,
             'codigo_barras_sku': sku,
             'pdv_codigo': store,
-            'cant_vta_pred_deepar': pred_series
+            'cant_vta_pred_deepar': pred_series,
+            'item_id': item_id
         })
         results.append(df_pred)
 
     final_results = pd.concat(results, ignore_index=True)
+    final_results['pdv_codigo'] =  final_results['pdv_codigo'].astype('int64')
+    final_results['codigo_barras_sku'] =  final_results['codigo_barras_sku'].astype('int64')
     return final_results
+
+
 
 if __name__ == '__main__':
     cluster_number = 3
