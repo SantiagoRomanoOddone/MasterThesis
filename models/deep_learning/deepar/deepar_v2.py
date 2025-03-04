@@ -18,8 +18,6 @@ mpl.rcParams['axes.grid'] = False
 
 
 
-
-
 if __name__ == '__main__':
     cluster_number = 3
     features = pd.read_parquet('features/processed/features.parquet')
@@ -28,6 +26,8 @@ if __name__ == '__main__':
 
     all_skus = features["codigo_barras_sku"].unique()
     all_skus = all_skus[:1]
+    # Initialize an empty list to store all results
+    all_results = []
 
     for sku in all_skus:
         print(f"SKU: {sku}")
@@ -117,10 +117,6 @@ if __name__ == '__main__':
         tss = list(tqdm(ts_it, total=len(df_test)))
         print("Obtaining time series predictions ...")
         forecasts = list(tqdm(forecast_it, total=len(df_test)))
-
-        
-        # Initialize an empty list to store all results
-        all_results = []
 
         # Iterate over forecasts, ground truth time series, and pdv_codigo
         for forecast, ts, pdv_codigo in zip(forecasts, tss, df_input['index']):
