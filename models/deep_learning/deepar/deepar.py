@@ -223,27 +223,6 @@ def main():
     
     return final_results
 
-# Main function
-def main():
-    set_random_seed(42)
-    
-    # Load and preprocess data
-    filtered, validation = load_and_preprocess_data(DATA_PATH, CLUSTER_NUMBER, SKU, '2024-11-30')
-    
-    # Prepare dataset
-    df_train, df_test, ts_code, df_input = prepare_dataset(filtered, START_DATE, FREQ, PREDICTION_LENGTH)
-    
-    # Train the model
-    predictor = train_deepar_model(df_train, ts_code, START_TRAIN, FREQ, PREDICTION_LENGTH)
-    
-    # Make predictions
-    tss, forecasts = make_predictions(predictor, df_test, ts_code, START_DATE, FREQ)
-    
-    # Process results
-    final_results = process_results(tss, forecasts, df_input, START_TEST, FREQ, PREDICTION_LENGTH, SKU)
-    
-    return final_results
-
 # Run the main function
 if __name__ == "__main__":
     final_results = main()
