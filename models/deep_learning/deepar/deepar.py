@@ -30,14 +30,18 @@ pd.set_option('display.max_columns', None)
 
 # Constants
 CLUSTER_NUMBER = 3
-SKU = 7894900027013
 FREQ = "D"
+
 PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
 
-DATA_PATH = "/content/features.parquet"
+# PREDICTION_LENGTH = 31
+# START_TRAIN = pd.Timestamp("2022-12-01")
+# START_TEST = pd.Timestamp("2024-10-01")
+# END_TEST = pd.Timestamp("2024-10-31")
+
 
 # Set random seeds for reproducibility
 def set_random_seed(seed=42):
@@ -57,18 +61,6 @@ def set_random_seed(seed=42):
     if 'mxnet' in sys.modules:
         mx.random.seed(seed)
 
-# Load and preprocess data
-def load_and_preprocess_data(data_path, cluster_number, sku, end_test, start_test):
-    features = pd.read_parquet(data_path)
-    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    features = features[features["cluster"] == cluster_number]
-    
-    filtered = features[(features["codigo_barras_sku"] == sku)].copy()
-    filtered = filtered[filtered['fecha_comercial'] <= end_test]
-    validation = filtered[filtered['fecha_comercial'] >= start_test]
-    filtered = filtered[filtered['fecha_comercial'] < start_test]
-    
-    return filtered, validation
 
 # Prepare dataset for DeepAR
 def prepare_dataset(data, end_test, freq, prediction_length):
@@ -89,9 +81,6 @@ def prepare_dataset(data, end_test, freq, prediction_length):
 
 # Create ListDataset
 def create_list_dataset(data, ts_code, start_date, freq):
-    """
-    Create a ListDataset for GluonTS from the given data.
-    """
     return ListDataset([
         {
             FieldName.TARGET: target,
@@ -165,12 +154,12 @@ def process_results(tss, forecasts, df_input, start_test, freq, prediction_lengt
             'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
             'cant_vta': latest_tss,
             'cant_vta_pred_deepar': predictions,
-            'pdv_codigo': pdv_codigo_name
+            'pdv_codigo': pdv_codigo_name,
+            'codigo_barras_sku': sku 
         })
         all_results.append(results)
     
     final_results = pd.concat(all_results, ignore_index=True)
-    final_results['codigo_barras_sku'] = sku
     final_results.rename(columns={'date': 'fecha_comercial'}, inplace=True)
     final_results['pdv_codigo'] = final_results['pdv_codigo'].str.extract(r'(\d+)$').astype(int)
     final_results['fecha_comercial'] = pd.to_datetime(final_results['fecha_comercial'])
@@ -181,48 +170,73 @@ def process_results(tss, forecasts, df_input, start_test, freq, prediction_lengt
     return final_results
 
 # Main function
-def main():
+def main(features):
     set_random_seed(42)
-    
-    # Load and preprocess data
-    filtered, validation = load_and_preprocess_data(data_path = DATA_PATH, 
-                                                    cluster_number= CLUSTER_NUMBER,
-                                                    sku = SKU, 
-                                                    end_test = END_TEST, 
-                                                    start_test = START_TEST)
-    
-    # Prepare dataset
-    df_train, df_test, ts_code, df_input = prepare_dataset(data = filtered, 
-                                                           end_test = END_TEST, 
-                                                           freq = FREQ, 
-                                                            prediction_length = PREDICTION_LENGTH)
-    
-    # Train the model
-    predictor = train_deepar_model(df_train = df_train, 
-                                   ts_code = ts_code, 
-                                   start_date = START_TRAIN, 
-                                   freq = FREQ, 
-                                   prediction_length = PREDICTION_LENGTH)
-    
-    # Make predictions
-    tss, forecasts = make_predictions(predictor = predictor, 
-                                      df_test = df_test, 
-                                      ts_code = ts_code, 
-                                      start_date = START_TRAIN, 
-                                      freq = FREQ)
-    
-    # Process results
-    final_results = process_results(tss = tss, 
-                                    forecasts = forecasts, 
-                                    df_input = df_input, 
-                                    start_test = START_TEST, 
-                                    freq = FREQ, 
-                                    prediction_length = PREDICTION_LENGTH, 
-                                    sku = SKU)
-    
-    return final_results
 
-# Run the main function
+    unique_skus = features['codigo_barras_sku'].unique()
+    all_final_results = []
+    for sku in unique_skus:
+      print(f"Processing SKU: {sku}")
+
+      filtered = features[(features["codigo_barras_sku"] == sku)].copy()    
+      # Skip if no data is available for the SKU
+      if len(filtered) == 0:
+          print(f"No data available for SKU: {sku}")
+          continue
+      
+      # Prepare dataset
+      df_train, df_test, ts_code, df_input = prepare_dataset(
+          data=filtered,
+          end_test=END_TEST,
+          freq=FREQ,
+          prediction_length=PREDICTION_LENGTH
+      )
+      
+      # Train the model
+      predictor = train_deepar_model(
+          df_train=df_train,
+          ts_code=ts_code,
+          start_date=START_TRAIN,
+          freq=FREQ,
+          prediction_length=PREDICTION_LENGTH
+      )
+      
+      # Make predictions
+      tss, forecasts = make_predictions(
+          predictor=predictor,
+          df_test=df_test,
+          ts_code=ts_code,
+          start_date=START_TRAIN,
+          freq=FREQ
+      )
+      
+      # Process results
+      final_results = process_results(
+          tss=tss,
+          forecasts=forecasts,
+          df_input=df_input,
+          start_test=START_TEST,
+          freq=FREQ,
+          prediction_length=PREDICTION_LENGTH,
+          sku=sku
+      )
+      
+      # Append results for the current SKU
+      all_final_results.append(final_results)
+    
+    combined_results = pd.concat(all_final_results, ignore_index=True)
+    return combined_results
+
 if __name__ == "__main__":
-    final_results = main()
-    print(final_results)
+    DATA_PATH = "/content/features.parquet"
+
+    features = pd.read_parquet(DATA_PATH)
+    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster']]
+    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
+    filtered = features[features["cluster"] == CLUSTER_NUMBER]
+    filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
+    validation = filtered[filtered['fecha_comercial'] >= START_TEST]
+    filtered = filtered[filtered['fecha_comercial'] < START_TEST]
+
+
+    final_results = main(filtered)
