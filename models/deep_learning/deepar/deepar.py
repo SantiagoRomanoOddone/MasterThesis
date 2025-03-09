@@ -34,7 +34,6 @@ SKU = 7894900027013
 FREQ = "D"
 PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
-END_TRAIN = pd.Timestamp("2024-10-31")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
 
