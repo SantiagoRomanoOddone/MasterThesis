@@ -1,22 +1,16 @@
-# !pip install numpy==1.23.5
-# !pip install --upgrade mxnet==1.6.0
-# !pip install gluonts
-# !pip install lightning
+from gluonts.torch import DeepAREstimator
+from models.deep_learning.gluonts.functions import (check_data_requirements, 
+                                                    set_random_seed, 
+                                                    prepare_dataset, 
+                                                    create_list_dataset,
+                                                    make_predictions)
+
 import numpy as np
-# import mxnet as mx
 import random
 np.random.seed(7)
-# mx.random.seed(7)
 import pandas as pd
 import matplotlib as mpl
-import matplotlib.pyplot as plt
-from gluonts.evaluation.backtest import make_evaluation_predictions
-from tqdm import tqdm
-from gluonts.torch import DeepAREstimator
 import numpy as np
-from gluonts.dataset.common import ListDataset
-from gluonts.dataset.field_names import FieldName
-import sys
 
 random_seed = 42
 random.seed(random_seed)
@@ -25,65 +19,6 @@ np.random.seed(random_seed)
 mpl.rcParams['figure.figsize'] = (10, 8)
 mpl.rcParams['axes.grid'] = False
 pd.set_option('display.max_columns', None)
-
-
-# Constants
-CLUSTER_NUMBER = 3
-FREQ = "D"
-
-PREDICTION_LENGTH = 30
-START_TRAIN = pd.Timestamp("2022-12-01")
-START_TEST = pd.Timestamp("2024-11-01")
-END_TEST = pd.Timestamp("2024-11-30")
-
-# PREDICTION_LENGTH = 31
-# START_TRAIN = pd.Timestamp("2022-12-01")
-# START_TEST = pd.Timestamp("2024-10-01")
-# END_TEST = pd.Timestamp("2024-10-31")
-
-
-# Set random seeds for reproducibility
-def set_random_seed(seed=42):
-    import random
-    import numpy as np
-    import torch  # If using PyTorch backend
-
-    random.seed(seed)
-    np.random.seed(seed)
-    if 'torch' in sys.modules:
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(seed)
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
-
-# Prepare dataset for DeepAR
-def prepare_dataset(data, end_test, freq, prediction_length):
-    df = data.pivot(index="fecha_comercial", columns="pdv_codigo", values="cant_vta")
-    date_range = pd.date_range(start=df.index.min(), end=end_test, freq=freq)
-    df = df.reindex(date_range)
-    df.columns = [f"pdv_codigo_{col}" for col in df.columns]
-    df_input = df.reset_index().rename(columns={"index": "date"})
-    
-    ts_code = np.arange(len(df_input.columns[1:]), dtype=int)
-    ts_code_mapping = dict(zip(df_input.columns[1:], ts_code))
-    df_values = df_input.iloc[:, 1:].astype(float)
-    
-    df_train = df_values.iloc[:-prediction_length, :].values
-    df_test = df_values.iloc[:, :].values
-    
-    return df_train, df_test, ts_code, df_input
-
-# Create ListDataset
-def create_list_dataset(data, ts_code, start_date, freq):
-    return ListDataset([
-        {
-            FieldName.TARGET: target,
-            FieldName.START: start_date,
-            FieldName.FEAT_STATIC_CAT: [fsc]
-        }
-        for target, fsc in zip(data.T, ts_code)
-    ], freq=freq)
 
 # Train the DeepAR model
 def train_deepar_model(df_train, ts_code, start_date, freq, prediction_length):
@@ -114,46 +49,31 @@ def train_deepar_model(df_train, ts_code, start_date, freq, prediction_length):
         validation_sampler=None,
         nonnegative_pred_samples=False,
     )
-    
+
     train_ds = create_list_dataset(df_train, ts_code, start_date, freq)
     predictor = estimator.train(training_data=train_ds)
     return predictor
 
-# Make predictions
-def make_predictions(predictor, df_test, ts_code, start_date, freq):
-    test_ds = create_list_dataset(df_test, ts_code, start_date, freq)
-    
-    forecast_it, ts_it = make_evaluation_predictions(
-        dataset=test_ds,
-        predictor=predictor,
-        num_samples=100,
-    )
-    
-    print("Obtaining time series conditioning values ...")
-    tss = list(tqdm(ts_it, total=len(df_test)))
-    print("Obtaining time series predictions ...")
-    forecasts = list(tqdm(forecast_it, total=len(df_test)))
-    
-    return tss, forecasts
-
 # Process results
-def process_results(tss, forecasts, df_input, start_test, freq, prediction_length, sku):
+def process_deepar_results(tss, forecasts, df_input, start_test, freq, prediction_length, sku):
     all_results = []
-    
+
     for i, (tss_series, forecast) in enumerate(zip(tss, forecasts)):
         latest_tss = tss_series.iloc[-prediction_length:].values.flatten()
-        predictions = forecast.mean
+        predictions_mean = forecast.mean
+        predictions_median = forecast.median
         pdv_codigo_name = df_input.columns[i + 1]
-        
+
         results = pd.DataFrame({
             'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
             'cant_vta': latest_tss,
-            'cant_vta_pred_deepar': predictions,
+            'cant_vta_pred_deepar_mean': predictions_mean,
+            'cant_vta_pred_deepar_median': predictions_median,
             'pdv_codigo': pdv_codigo_name,
-            'codigo_barras_sku': sku 
+            'codigo_barras_sku': sku
         })
         all_results.append(results)
-    
+
     final_results = pd.concat(all_results, ignore_index=True)
     final_results.rename(columns={'date': 'fecha_comercial'}, inplace=True)
     final_results['pdv_codigo'] = final_results['pdv_codigo'].str.extract(r'(\d+)$').astype(int)
@@ -161,41 +81,62 @@ def process_results(tss, forecasts, df_input, start_test, freq, prediction_lengt
     final_results['codigo_barras_sku'] = final_results['codigo_barras_sku'].astype(int)
     final_results['pdv_codigo'] = final_results['pdv_codigo'].astype(int)
     final_results.drop(columns=['cant_vta'], inplace=True)
-    
+
     return final_results
 
 # Main function
-def main(features):
+def deepar_main(features):
+
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
-    all_final_results = []
-    for sku in unique_skus:
-      print(f"Processing SKU: {sku}")
 
-      filtered = features[(features["codigo_barras_sku"] == sku)].copy()    
+    min_data_points = PREDICTION_LENGTH + 100 
+    valid_skus = []
+    for sku in unique_skus:
+        sku_data = features[features['codigo_barras_sku'] == sku]
+        if check_data_requirements(sku_data, min_data_points):
+            valid_skus.append(sku)
+
+    all_final_results = []
+    for sku in valid_skus:
+      print(f"Processing SKU: {sku}")
+      filtered = features[(features["codigo_barras_sku"] == sku)].copy()
       # Skip if no data is available for the SKU
       if len(filtered) == 0:
           print(f"No data available for SKU: {sku}")
           continue
-      
+
+      # Check for NaNs or invalid values
+      if filtered.isnull().any().any():
+          print(f"SKU {sku} contains NaNs. Skipping.")
+          continue
+
       # Prepare dataset
-      df_train, df_test, ts_code, df_input = prepare_dataset(
-          data=filtered,
-          end_test=END_TEST,
-          freq=FREQ,
-          prediction_length=PREDICTION_LENGTH
-      )
-      
+      try:
+          df_train, df_test, ts_code, df_input = prepare_dataset(
+              data=filtered,
+              end_test=END_TEST,
+              freq=FREQ,
+              prediction_length=PREDICTION_LENGTH
+          )
+      except ValueError as e:
+          print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
+          continue
+
       # Train the model
-      predictor = train_deepar_model(
-          df_train=df_train,
-          ts_code=ts_code,
-          start_date=START_TRAIN,
-          freq=FREQ,
-          prediction_length=PREDICTION_LENGTH
-      )
-      
+      try:
+          predictor = train_deepar_model(
+              df_train=df_train,
+              ts_code=ts_code,
+              start_date=START_TRAIN,
+              freq=FREQ,
+              prediction_length=PREDICTION_LENGTH
+          )
+      except ValueError as e:
+          print(f"Skipping SKU {sku} in training due to error: {e}")
+          continue
+
       # Make predictions
       tss, forecasts = make_predictions(
           predictor=predictor,
@@ -204,9 +145,9 @@ def main(features):
           start_date=START_TRAIN,
           freq=FREQ
       )
-      
+
       # Process results
-      final_results = process_results(
+      final_results = process_deepar_results(
           tss=tss,
           forecasts=forecasts,
           df_input=df_input,
@@ -215,14 +156,24 @@ def main(features):
           prediction_length=PREDICTION_LENGTH,
           sku=sku
       )
-      
+
       # Append results for the current SKU
       all_final_results.append(final_results)
-    
+
+
     combined_results = pd.concat(all_final_results, ignore_index=True)
     return combined_results
 
+
 if __name__ == "__main__":
+    # Constants
+    CLUSTER_NUMBER = 3
+    FREQ = "D"
+    PREDICTION_LENGTH = 30
+    START_TRAIN = pd.Timestamp("2022-12-01")
+    START_TEST = pd.Timestamp("2024-11-01")
+    END_TEST = pd.Timestamp("2024-11-30")
+
     DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
 
     features = pd.read_parquet(DATA_PATH)
@@ -233,5 +184,10 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
+    filter = filtered['codigo_barras_sku'].unique()[:1]
 
-    final_results = main(filtered)
+    filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
+
+
+    final_results = deepar_main(filtered)
+    print(final_results)
