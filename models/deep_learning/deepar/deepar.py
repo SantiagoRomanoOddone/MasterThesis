@@ -3,17 +3,16 @@
 # !pip install gluonts
 # !pip install lightning
 import numpy as np
-import mxnet as mx
+# import mxnet as mx
 import random
 np.random.seed(7)
-mx.random.seed(7)
+# mx.random.seed(7)
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from gluonts.evaluation.backtest import make_evaluation_predictions
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 from gluonts.torch import DeepAREstimator
-from gluonts.mx.trainer import Trainer
 import numpy as np
 from gluonts.dataset.common import ListDataset
 from gluonts.dataset.field_names import FieldName
@@ -48,7 +47,6 @@ def set_random_seed(seed=42):
     import random
     import numpy as np
     import torch  # If using PyTorch backend
-    import mxnet as mx  # If using MXNet backend
 
     random.seed(seed)
     np.random.seed(seed)
@@ -58,9 +56,6 @@ def set_random_seed(seed=42):
             torch.cuda.manual_seed_all(seed)
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
-    if 'mxnet' in sys.modules:
-        mx.random.seed(seed)
-
 
 # Prepare dataset for DeepAR
 def prepare_dataset(data, end_test, freq, prediction_length):
@@ -228,7 +223,7 @@ def main(features):
     return combined_results
 
 if __name__ == "__main__":
-    DATA_PATH = "/content/features.parquet"
+    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
 
     features = pd.read_parquet(DATA_PATH)
     features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster']]

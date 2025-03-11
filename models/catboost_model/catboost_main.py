@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from metrics.metrics import Metrics
-from models.catboost.catboost_model import CatBoostRegressor
+from models.catboost_model.catboost_model import CatBoostRegressor
 from train.splits.fixed_split import fixed_split
 from train.transformations.onehot_encoding_pdv import onehot_encoding_pdv
 
@@ -85,17 +85,25 @@ if __name__ == '__main__':
     features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
     features = features[features['cluster'] == cluster_number]
+
+    features['cant_vta'] = features['cant_vta'] / 100
+    codigo_barras = 7894900027013
+    pdv_codigo = 1
+
+    features = features[(features['pdv_codigo'] == pdv_codigo) & (features['codigo_barras_sku'] == codigo_barras) ]
+    features = features[features['fecha_comercial']<='2024-10-10']
     
     train_df, test_df = fixed_split(features)
     
     # Testing catboost models 
     results = catboost(features)
-    results_sku = catboost_by_product(features)
+    # results_sku = catboost_by_product(features)
 
-    test_df = test_df.merge(results_sku, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
+    # test_df = test_df.merge(results_sku, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
     test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
 
-    summary_df = Metrics().create_summary_dataframe(test_df)
+    test_df.to_csv('catboost_results.csv', index=False)
+    # summary_df = Metrics().create_summary_dataframe(test_df)
 
-    print(summary_df['best_rmse'].value_counts())
-    print(summary_df['best_mse'].value_counts())
+    # print(summary_df['best_rmse'].value_counts())
+    # print(summary_df['best_mse'].value_counts())

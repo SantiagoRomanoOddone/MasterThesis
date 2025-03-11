@@ -1,8 +1,7 @@
-from models.catboost.catboost_main import catboost, catboost_by_product
+from models.catboost_model.catboost_main import catboost, catboost_by_product
 from models.mean_sale.mean_sale_main import mean_sale
 from models.xgboost.xgboost_main import xgboost, xgboost_by_product
 from models.deep_learning.lstm.lstm_main import lstm
-from models.deep_learning.deepar.deepar_main import deepar
 from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
 import matplotlib.pyplot as plt
@@ -48,30 +47,28 @@ def plot_combinations(data, num_combinations):
 
 if __name__ == '__main__':
 
-    cluster_number = 3
+    cluster_number = 2
     features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
 
     features = features[features['cluster'] == cluster_number]
     train_df, test_df = fixed_split(features)
     
     # Testing catboost models 
-    cb_results = catboost(features)
+    # cb_results = catboost(features)
     cb_results_sku = catboost_by_product(features)
-    xgb_results = xgboost(features)
-    xgb_results_sku = xgboost_by_product(features)
+    # xgb_results = xgboost(features)
+    # xgb_results_sku = xgboost_by_product(features)
     mean_sale_results = mean_sale(features)
-    lgbm_results = lightgbm(features)
-    lgbm_results_sku = lightgbm_by_product(features)
-    deepar_results = deepar(features)
+    # lgbm_results = lightgbm(features)
+    # lgbm_results_sku = lightgbm_by_product(features)
     # lstm_results = lstm(features)
 
-    test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    # test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lstm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
 
@@ -81,8 +78,8 @@ if __name__ == '__main__':
     print(summary_df['best_mse'].value_counts())
 
 
-    # Analysis 
-    plot_combinations(test_df, 10)
+    # # Analysis 
+    # plot_combinations(test_df, 10)
 
 
 
