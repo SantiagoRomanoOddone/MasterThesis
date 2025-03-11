@@ -8,3 +8,7 @@ extraccion_cerveza_refrigerantes.csv
 *.pyc
 
 *.txt
+
+*.json
+*.yaml
+*.csv
