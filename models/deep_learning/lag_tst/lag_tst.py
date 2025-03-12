@@ -162,7 +162,7 @@ def lagtst_main(features):
     combined_results = pd.concat(all_final_results, ignore_index=True)
     return combined_results
 
-
+# TOO SLOW ------------------------------------
 if __name__ == "__main__":
     # Constants
     CLUSTER_NUMBER = 3
