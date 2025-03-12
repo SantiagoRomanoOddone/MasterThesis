@@ -1,9 +1,12 @@
 from models.catboost_model.catboost_main import catboost, catboost_by_product
 from models.mean_sale.mean_sale_main import mean_sale
-from models.xgboost.xgboost_main import xgboost, xgboost_by_product
-from models.deep_learning.lstm.lstm_main import lstm
-from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
+# from models.xgboost.xgboost_main import xgboost, xgboost_by_product
+# from models.deep_learning.lstm.lstm_main import lstm
+# from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
+from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
+from models.deep_learning.deepar.deepar import deepar_main
+
 import matplotlib.pyplot as plt
 from metrics.metrics import Metrics
 import pandas as pd
@@ -47,32 +50,52 @@ def plot_combinations(data, num_combinations):
 
 if __name__ == '__main__':
 
-    cluster_number = 2
-    features = pd.read_parquet('features/processed/features.parquet').sort_values(['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial']).reset_index(drop=True)
+    # Constants
+    CLUSTER_NUMBER = 3
+    FREQ = "D"
+    PREDICTION_LENGTH = 30
+    START_TRAIN = pd.Timestamp("2022-12-01")
+    START_TEST = pd.Timestamp("2024-11-01")
+    END_TEST = pd.Timestamp("2024-11-30")
 
-    features = features[features['cluster'] == cluster_number]
+    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
+
+    features = pd.read_parquet(DATA_PATH)
+    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster']]
+    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
+    features = features[features["cluster"] == CLUSTER_NUMBER]
+
+    filter = features['codigo_barras_sku'].unique()
+    features = features[features['codigo_barras_sku'].isin(filter)]
+
     train_df, test_df = fixed_split(features)
+
+    mean_sale_results = mean_sale(features)
+    deepar_results = deepar_main(features)
+    tft_results = tft_main(features)
+
     
     # Testing catboost models 
     # cb_results = catboost(features)
-    cb_results_sku = catboost_by_product(features)
+    # cb_results_sku = catboost_by_product(features)
     # xgb_results = xgboost(features)
     # xgb_results_sku = xgboost_by_product(features)
-    mean_sale_results = mean_sale(features)
     # lgbm_results = lightgbm(features)
     # lgbm_results_sku = lightgbm_by_product(features)
     # lstm_results = lstm(features)
 
     # test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    # test_df = pd.merge(test_df, lstm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
 
     summary_df = Metrics().create_summary_dataframe(test_df)
+    summary_df.to_csv('summary_custer_3_total.csv', index=False)
 
     print(summary_df['best_rmse'].value_counts())
     print(summary_df['best_mse'].value_counts())

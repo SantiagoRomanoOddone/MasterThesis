@@ -6,6 +6,13 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     create_list_dataset,
                                                     make_predictions)
 
+PREDICTION_LENGTH = 30
+CLUSTER_NUMBER = 3
+FREQ = "D"
+PREDICTION_LENGTH = 30
+START_TRAIN = pd.Timestamp("2022-12-01")
+START_TEST = pd.Timestamp("2024-11-01")
+END_TEST = pd.Timestamp("2024-11-30")
 
 def train_tft_model(df_train, ts_code, start_date, freq, prediction_length):
     estimator = TemporalFusionTransformerEstimator(
@@ -125,7 +132,6 @@ def tft_main(features):
 
     combined_results = pd.concat(all_final_results, ignore_index=True)
     return combined_results
-
 
 
 

@@ -20,6 +20,13 @@ mpl.rcParams['figure.figsize'] = (10, 8)
 mpl.rcParams['axes.grid'] = False
 pd.set_option('display.max_columns', None)
 
+CLUSTER_NUMBER = 3
+FREQ = "D"
+PREDICTION_LENGTH = 30
+START_TRAIN = pd.Timestamp("2022-12-01")
+START_TEST = pd.Timestamp("2024-11-01")
+END_TEST = pd.Timestamp("2024-11-30")
+
 # Train the DeepAR model
 def train_deepar_model(df_train, ts_code, start_date, freq, prediction_length):
     estimator = DeepAREstimator(
@@ -184,7 +191,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:1]
+    filter = filtered['codigo_barras_sku'].unique()[:3]
 
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
