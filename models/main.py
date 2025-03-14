@@ -4,8 +4,18 @@ from models.mean_sale.mean_sale_main import mean_sale
 # from models.deep_learning.lstm.lstm_main import lstm
 # from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
-from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
+
 from models.deep_learning.deepar.deepar import deepar_main
+from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
+
+# testing
+from models.deep_learning.d_linear import d_linear_main
+from models.deep_learning.deep_npts import deep_npts_main
+from models.deep_learning.patch_tst import patch_tst_main
+from models.deep_learning.simple_feedforward import simple_feedforward_main
+from models.deep_learning.wavenet import wavenet_main
+
+
 
 import matplotlib.pyplot as plt
 from metrics.metrics import Metrics
@@ -51,7 +61,7 @@ def plot_combinations(data, num_combinations):
 if __name__ == '__main__':
 
     # Constants
-    CLUSTER_NUMBER = 3
+    CLUSTER_NUMBER = 1
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
@@ -65,7 +75,7 @@ if __name__ == '__main__':
     features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
     features = features[features["cluster"] == CLUSTER_NUMBER]
 
-    filter = features['codigo_barras_sku'].unique()
+    filter = features['codigo_barras_sku'].unique()[:10]
     features = features[features['codigo_barras_sku'].isin(filter)]
 
     train_df, test_df = fixed_split(features)
@@ -73,6 +83,11 @@ if __name__ == '__main__':
     mean_sale_results = mean_sale(features)
     deepar_results = deepar_main(features)
     tft_results = tft_main(features)
+    d_linear_results = d_linear_main(features)
+    deep_npts_results = deep_npts_main(features)
+    patch_tst_results = patch_tst_main(features)
+    simple_feedforward_results = simple_feedforward_main(features)
+    wavenet_results = wavenet_main(features)
 
     
     # Testing catboost models 
@@ -93,9 +108,15 @@ if __name__ == '__main__':
     test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, d_linear_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, deep_npts_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, patch_tst_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, simple_feedforward_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+
 
     summary_df = Metrics().create_summary_dataframe(test_df)
-    summary_df.to_csv('summary_custer_3_total.csv', index=False)
+    # summary_df.to_csv('summary_custer_3_total.csv', index=False)
 
     print(summary_df['best_rmse'].value_counts())
     print(summary_df['best_mse'].value_counts())
