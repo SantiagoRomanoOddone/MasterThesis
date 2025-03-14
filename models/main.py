@@ -71,11 +71,11 @@ if __name__ == '__main__':
     DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
 
     features = pd.read_parquet(DATA_PATH)
-    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster']]
+    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster_sku']]
     features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    features = features[features["cluster"] == CLUSTER_NUMBER]
+    features = features[features["cluster_sku"] == CLUSTER_NUMBER]
 
-    filter = features['codigo_barras_sku'].unique()[:10]
+    filter = features['codigo_barras_sku'].unique()[0:5]
     features = features[features['codigo_barras_sku'].isin(filter)]
 
     train_df, test_df = fixed_split(features)
