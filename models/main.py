@@ -9,11 +9,11 @@ from models.deep_learning.deepar.deepar import deepar_main
 from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
 
 # testing
-from models.deep_learning.d_linear import d_linear_main
-from models.deep_learning.deep_npts import deep_npts_main
-from models.deep_learning.patch_tst import patch_tst_main
-from models.deep_learning.simple_feedforward import simple_feedforward_main
-from models.deep_learning.wavenet import wavenet_main
+from models.deep_learning.d_linear.d_linear import dlinear_main
+from models.deep_learning.deep_npts.deep_npts import deepnpts_main
+from models.deep_learning.patch_tst.patch_tst import patchtst_main
+from models.deep_learning.simple_feedforward.simple_feedforward import sff_main
+from models.deep_learning.wavenet.wavenet import wavenet_main
 
 
 
@@ -61,7 +61,7 @@ def plot_combinations(data, num_combinations):
 if __name__ == '__main__':
 
     # Constants
-    CLUSTER_NUMBER = 1
+    CLUSTER_NUMBER = 0
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
@@ -83,10 +83,10 @@ if __name__ == '__main__':
     mean_sale_results = mean_sale(features)
     deepar_results = deepar_main(features)
     tft_results = tft_main(features)
-    d_linear_results = d_linear_main(features)
-    deep_npts_results = deep_npts_main(features)
-    patch_tst_results = patch_tst_main(features)
-    simple_feedforward_results = simple_feedforward_main(features)
+    d_linear_results = dlinear_main(features)
+    deep_npts_results = deepnpts_main(features)
+    patch_tst_results = patchtst_main(features)
+    simple_feedforward_results = sff_main(features)
     wavenet_results = wavenet_main(features)
 
     
