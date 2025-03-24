@@ -61,7 +61,7 @@ def plot_combinations(data, num_combinations):
 if __name__ == '__main__':
 
     # Constants
-    CLUSTER_NUMBER = 0
+    CLUSTER_NUMBER = 2
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
     features = features[features["cluster_sku"] == CLUSTER_NUMBER]
 
-    filter = features['codigo_barras_sku'].unique()[0:5]
+    filter = features['codigo_barras_sku'].unique()[0:10]
     features = features[features['codigo_barras_sku'].isin(filter)]
 
     train_df, test_df = fixed_split(features)
