@@ -106,15 +106,6 @@ def deepar_main(features):
     for sku in valid_skus:
       print(f"Processing SKU: {sku}")
       filtered = features[(features["codigo_barras_sku"] == sku)].copy()
-      # Skip if no data is available for the SKU
-      if len(filtered) == 0:
-          print(f"No data available for SKU: {sku}")
-          continue
-
-      # Check for NaNs or invalid values
-      if filtered.isnull().any().any():
-          print(f"SKU {sku} contains NaNs. Skipping.")
-          continue
 
       # Prepare dataset
       try:
