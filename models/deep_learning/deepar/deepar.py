@@ -47,7 +47,7 @@ def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
 
 def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
     '''Random search for hyperparameters'''
-    
+
     # Hyperparameter search space
     hyperparameter_space = {
         "num_layers": [1, 2, 3],
@@ -100,6 +100,11 @@ def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
         actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
 
         actuals = actuals.reshape(predictions_mean.shape)
+
+        # TODO: improve this part
+        if np.isnan(actuals).any():
+            print("NaN values found in actuals, filling with 0")
+            actuals = np.nan_to_num(actuals, nan=0.0)
 
         rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
 

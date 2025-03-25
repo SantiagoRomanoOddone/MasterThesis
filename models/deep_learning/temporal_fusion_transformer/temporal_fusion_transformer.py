@@ -95,6 +95,10 @@ def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
 
         actuals = actuals.reshape(predictions_mean.shape)
 
+        # TODO: improve this part
+        if np.isnan(actuals).any():
+            print("NaN values found in actuals, filling with 0")
+            actuals = np.nan_to_num(actuals, nan=0.0)
         rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
 
         print(f"RMSE for this model: {rmse}")
