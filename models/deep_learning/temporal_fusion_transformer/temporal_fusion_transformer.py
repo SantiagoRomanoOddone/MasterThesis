@@ -3,8 +3,14 @@ from gluonts.torch import TemporalFusionTransformerEstimator
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
-                                                    create_list_dataset,
-                                                    make_predictions)
+                                                    make_predictions,
+                                                    process_results)
+import numpy as np
+import random
+random_seed = 42
+np.random.seed(random_seed)
+random.seed(random_seed)
+np.random.seed(random_seed)
 
 PREDICTION_LENGTH = 30
 CLUSTER_NUMBER = 3
@@ -13,45 +19,94 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
+N_TRIALS = 2  # Number of trials for random search
 
-def train_tft_model(df_train, ts_code, start_date, freq, prediction_length):
+def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
+    '''Train the model with the best hyperparameters for TemporalFusionTransformer'''
     estimator = TemporalFusionTransformerEstimator(
         freq=freq,
         prediction_length=prediction_length,
-        weight_decay=1e-08,
-        dropout_rate=0.1,
+        hidden_dim=hyperparams["hidden_dim"],
+        variable_dim=hyperparams["variable_dim"],
+        num_heads=hyperparams["num_heads"],
+        dropout_rate=hyperparams["dropout_rate"],
+        lr=hyperparams["lr"],
+        weight_decay=hyperparams["weight_decay"],
+        batch_size=hyperparams["batch_size"],
+        patience=hyperparams["patience"],
         trainer_kwargs={"max_epochs": 5},
     )
-
-    train_ds = create_list_dataset(df_train, ts_code, start_date, freq)
-    predictor = estimator.train(training_data=train_ds)
+    predictor = estimator.train(training_data=val_ds)
     return predictor
 
-# Process results
-def process_tft_results(tss, forecasts, df_input, start_test, freq, prediction_length, sku):
-    all_results = []
 
-    for i, (tss_series, forecast) in enumerate(zip(tss, forecasts)):
-        latest_tss = tss_series.iloc[-prediction_length:].values.flatten()
+def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
+    '''Random search for hyperparameters for TemporalFusionTransformer'''
 
-        results = pd.DataFrame({
-            'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
-            'cant_vta': latest_tss,
-            'cant_vta_pred_tft': forecast.mean,
-            'pdv_codigo': df_input.columns[i + 1],
-            'codigo_barras_sku': sku
-        })
-        all_results.append(results)
+    # Hyperparameter search space
+    hyperparameter_space = {
+        "hidden_dim": [16, 32, 64, 128],  # Hidden layer size
+        "variable_dim": [8, 16, 32],  # Variable representation dimension
+        "num_heads": [2, 4, 8],  # Attention heads
+        "dropout_rate": [0.1, 0.2, 0.3],  # Dropout rate
+        "lr": [0.001, 0.005, 0.01],  # Learning rate
+        "weight_decay": [1e-8, 1e-6, 1e-4],  # Regularization
+        "batch_size": [16, 32, 64],  # Batch size
+        "patience": [5, 10, 20]  # Early stopping patience
+    }
+    # Randomly sample N sets of hyperparameters
+    random_hyperparameter_sets = [
+        {key: random.choice(values) for key, values in hyperparameter_space.items()}
+        for _ in range(N_TRIALS)
+    ]
 
-    final_results = pd.concat(all_results, ignore_index=True)
-    final_results.rename(columns={'date': 'fecha_comercial'}, inplace=True)
-    final_results['pdv_codigo'] = final_results['pdv_codigo'].str.extract(r'(\d+)$').astype(int)
-    final_results['fecha_comercial'] = pd.to_datetime(final_results['fecha_comercial'])
-    final_results['codigo_barras_sku'] = final_results['codigo_barras_sku'].astype(int)
-    final_results['pdv_codigo'] = final_results['pdv_codigo'].astype(int)
-    final_results.drop(columns=['cant_vta'], inplace=True)
+    best_rmse = float("inf")
+    best_hyperparams = None
 
-    return final_results
+    for hyperparams in random_hyperparameter_sets:
+        print(f"Training with hyperparams: {hyperparams}")
+
+        # Define the TemporalFusionTransformer model with sampled hyperparameters
+        estimator = TemporalFusionTransformerEstimator(
+            freq=freq,
+            prediction_length=prediction_length,
+            hidden_dim=hyperparams["hidden_dim"],
+            variable_dim=hyperparams["variable_dim"],
+            num_heads=hyperparams["num_heads"],
+            dropout_rate=hyperparams["dropout_rate"],
+            lr=hyperparams["lr"],
+            weight_decay=hyperparams["weight_decay"],
+            batch_size=hyperparams["batch_size"],
+            patience=hyperparams["patience"],
+            trainer_kwargs={"max_epochs": 5},
+        )
+        
+        predictor = estimator.train(training_data=train_ds)
+
+        # Make validation predictions
+        tss, forecasts = make_predictions(
+            predictor=predictor,
+            test_ds=val_ds
+        )
+
+        # Compute RMSE as evaluation metric
+        predictions_mean = np.array([forecast.mean for forecast in forecasts])
+        actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
+
+        actuals = actuals.reshape(predictions_mean.shape)
+
+        rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
+
+        print(f"RMSE for this model: {rmse}")
+
+        # Store the best hyperparameters
+        if rmse < best_rmse:
+            best_rmse = rmse
+            best_hyperparams = hyperparams
+
+    print(f"Best Hyperparameters: {best_hyperparams}, RMSE: {best_rmse}")
+    return best_hyperparams
+
 
 # Main function
 def tft_main(features):
@@ -63,72 +118,72 @@ def tft_main(features):
     valid_skus = []
     for sku in unique_skus:
         sku_data = features[features['codigo_barras_sku'] == sku]
-        if check_data_requirements(sku_data, PREDICTION_LENGTH):
+        if check_data_requirements(sku_data, min_data_points):
             valid_skus.append(sku)
 
     all_final_results = []
     # valid_skus = valid_skus[40:50]
     for sku in valid_skus:
-      print(f"Processing SKU: {sku}")
-      filtered = features[(features["codigo_barras_sku"] == sku)].copy()
-      # Skip if no data is available for the SKU
-      if len(filtered) == 0:
-          print(f"No data available for SKU: {sku}")
-          continue
+        print(f"Processing SKU: {sku}")
+        filtered = features[(features["codigo_barras_sku"] == sku)].copy()
 
-      # Check for NaNs or invalid values
-      if filtered.isnull().any().any():
-          print(f"SKU {sku} contains NaNs. Skipping.")
-          continue
+        # Prepare dataset
+        try:
+            train_ds , val_ds, test_ds, ts_code, df_input = prepare_dataset(
+                data=filtered,
+                start_train=START_TRAIN,
+                end_test=END_TEST,
+                freq=FREQ,
+                prediction_length=PREDICTION_LENGTH
+            )
+        except ValueError as e:
+            print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
+            continue
 
-      # Prepare dataset
-      try:
-          df_train, df_test, ts_code, df_input = prepare_dataset(
-              data=filtered,
-              end_test=END_TEST,
-              freq=FREQ,
-              prediction_length=PREDICTION_LENGTH
-          )
-      except ValueError as e:
-          print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
-          continue
+        # Train the model
+        try:
+            # Random Search
+            best_params= random_search_params(
+                train_ds=train_ds,
+                val_ds=val_ds,
+                ts_code=ts_code,
+                freq=FREQ,
+                prediction_length=PREDICTION_LENGTH
+            )
+            # Train the final model with the best hyperparameters
+            predictor = train_best_model(
+                val_ds=val_ds,
+                ts_code=ts_code,
+                freq=FREQ,
+                prediction_length=PREDICTION_LENGTH,
+                hyperparams=best_params
+            )
+        except ValueError as e:
+            print(f"Skipping SKU {sku} in training due to error: {e}")
+            continue
 
 
-      # Train the model
-      try:
-          predictor = train_tft_model(
-              df_train=df_train,
-              ts_code=ts_code,
-              start_date=START_TRAIN,
-              freq=FREQ,
-              prediction_length=PREDICTION_LENGTH
-          )
-      except ValueError as e:
-          print(f"Skipping SKU {sku} in training due to error: {e}")
-          continue
+        # Make predictions
+        tss, forecasts = make_predictions(
+                predictor=predictor,
+                test_ds =test_ds 
+        )
 
-      # Make predictions
-      tss, forecasts = make_predictions(
-          predictor=predictor,
-          df_test=df_test,
-          ts_code=ts_code,
-          start_date=START_TRAIN,
-          freq=FREQ
-      )
 
-      # Process results
-      final_results = process_tft_results(
-          tss=tss,
-          forecasts=forecasts,
-          df_input=df_input,
-          start_test=START_TEST,
-          freq=FREQ,
-          prediction_length=PREDICTION_LENGTH,
-          sku=sku
-      )
+        # Process results
+        final_results = process_results(
+            tss=tss,
+            forecasts=forecasts,
+            df_input=df_input,
+            start_test=START_TEST,
+            freq=FREQ,
+            prediction_length=PREDICTION_LENGTH,
+            sku=sku,
+            model_name="tft"
+        )
 
-      # Append results for the current SKU
-      all_final_results.append(final_results)
+        # Append results for the current SKU
+        all_final_results.append(final_results)
 
     combined_results = pd.concat(all_final_results, ignore_index=True)
     return combined_results

@@ -91,15 +91,15 @@ def make_predictions(predictor, test_ds):
     return tss, forecasts
 
 # Process results
-def process_deepar_results(tss, 
-                           forecasts, 
-                           df_input, 
-                           start_test, 
-                           freq, 
-                           prediction_length, 
-                           sku,
-                           model_name,
-                           median=False):
+def process_results(tss, 
+                    forecasts, 
+                    df_input, 
+                    start_test, 
+                    freq, 
+                    prediction_length, 
+                    sku,
+                    model_name,
+                    median=False):
     all_results = []
 
     for i, (tss_series, forecast) in enumerate(zip(tss, forecasts)):

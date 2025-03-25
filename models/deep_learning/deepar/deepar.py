@@ -3,16 +3,16 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    process_deepar_results)
+                                                    process_results)
 
 import numpy as np
+import pandas as pd
 import random
 random_seed = 42
 np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
-import pandas as pd
-import numpy as np
+
 
 CLUSTER_NUMBER = 3
 FREQ = "D"
@@ -20,6 +20,7 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
+N_TRIALS = 2  # Number of trials for random search
 
 
 def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
@@ -46,18 +47,18 @@ def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
 
 def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
     '''Random search for hyperparameters'''
+    
     # Hyperparameter search space
     hyperparameter_space = {
         "num_layers": [1, 2, 3],
         "hidden_size": [16, 32, 64, 128],
-        "lr": [0.0001, 0.001, 0.005, 0.01],
-        "dropout_rate": [0.1, 0.2, 0.3, 0.5],
+        "lr": [0.001, 0.005, 0.01],
+        "dropout_rate": [0.1, 0.2, 0.3],
         "batch_size": [16, 32, 64],
         "weight_decay": [1e-8, 1e-6, 1e-4],
     }
 
     # Randomly sample N sets of hyperparameters
-    N_TRIALS = 5  # Number of trials for random search
     random_hyperparameter_sets = [
         {key: random.choice(values) for key, values in hyperparameter_space.items()}
         for _ in range(N_TRIALS)
@@ -114,7 +115,6 @@ def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
 
 # Main function
 def deepar_main(features):
-
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
@@ -133,7 +133,6 @@ def deepar_main(features):
 
         # Prepare dataset
         try:
-
             train_ds , val_ds, test_ds, ts_code, df_input = prepare_dataset(
                 data=filtered,
                 start_train=START_TRAIN,
@@ -174,7 +173,7 @@ def deepar_main(features):
         )
 
         # Process results
-        final_results = process_deepar_results(
+        final_results = process_results(
             tss=tss,
             forecasts=forecasts,
             df_input=df_input,
