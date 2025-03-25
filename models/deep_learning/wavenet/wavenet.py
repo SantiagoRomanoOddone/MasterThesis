@@ -3,8 +3,8 @@ from gluonts.time_feature import get_seasonality
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
-                                                    create_list_dataset,
-                                                    make_predictions)
+                                                    make_predictions,
+                                                    process_results)
 
 import numpy as np
 import random
@@ -13,8 +13,6 @@ np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
 import pandas as pd
-import numpy as np
-
 
 CLUSTER_NUMBER = 3
 FREQ = "D"
@@ -22,72 +20,102 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
+N_TRIALS = 2 
 
-# Train the DeepAR model
-def train_wavenet_model(df_train, ts_code, start_date, freq, prediction_length):
-
+def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
+    '''Train the model with the best hyperparameters'''
     estimator = WaveNetEstimator(
-        freq=freq,  # Required: Frequency of the time series (e.g., "D" for daily)
-        prediction_length=prediction_length,  # Required: Length of the prediction horizon
-        num_bins=1024,  # Optional: Number of bins for discretization (default is 1024)
-        num_residual_channels=24,  # Optional: Number of residual channels (default is 24)
-        num_skip_channels=32,  # Optional: Number of skip channels (default is 32)
-        dilation_depth=None,  # Optional: Depth of the dilation layers (default is None, which auto-computes)
-        num_stacks=1,  # Optional: Number of stacks of dilated convolutions (default is 1)
-        temperature=1.0,  # Optional: Temperature for sampling (default is 1.0)
-        num_feat_dynamic_real=0,  # Optional: Number of dynamic real features (default is 0)
-        num_feat_static_cat=0,  # Optional: Number of static categorical features (default is 0)
-        num_feat_static_real=0,  # Optional: Number of static real features (default is 0)
-        cardinality=[1],  # Optional: Cardinality of static categorical features (default is [1])
-        seasonality=get_seasonality(FREQ),  # Optional: Seasonality of the time series (default is inferred from freq)
-        embedding_dimension=5,  # Optional: Dimension of embeddings for categorical features (default is 5)
-        use_log_scale_feature=True,  # Optional: Whether to use log scale feature (default is True)
-        time_features=None,  # Optional: List of time features (default is None, which uses default features)
-        lr=0.001,  # Optional: Learning rate (default is 0.001)
-        weight_decay=1e-08,  # Optional: Weight decay for regularization (default is 1e-08)
-        train_sampler=None,  # Optional: Custom training sampler (default is None)
-        validation_sampler=None,  # Optional: Custom validation sampler (default is None)
-        batch_size=32,  # Optional: Batch size (default is 32)
-        num_batches_per_epoch=50,  # Optional: Number of batches per epoch (default is 50)
-        num_parallel_samples=100,  # Optional: Number of parallel samples for prediction (default is 100)
-        negative_data=False,  # Optional: Whether to allow negative data (default is False)
-        trainer_kwargs={"max_epochs": 5},  # Optional: Additional trainer arguments (e.g., max_epochs)
+        freq=freq,
+        prediction_length=prediction_length,
+        num_residual_channels=hyperparams["num_residual_channels"],
+        num_skip_channels=hyperparams["num_skip_channels"],
+        num_stacks=hyperparams["num_stacks"],
+        num_bins=hyperparams["num_bins"],
+        embedding_dimension=hyperparams["embedding_dimension"],
+        lr=hyperparams["lr"],
+        weight_decay=hyperparams["weight_decay"],
+        batch_size=hyperparams["batch_size"],
+        num_batches_per_epoch=hyperparams["num_batches_per_epoch"],
+        seasonality=get_seasonality(freq),
+        use_log_scale_feature=True,
+        trainer_kwargs={"max_epochs": 5},
     )
-
-    train_ds = create_list_dataset(df_train, ts_code, start_date, freq)
-    predictor = estimator.train(training_data=train_ds)
+    predictor = estimator.train(training_data=val_ds)
     return predictor
 
-# Process results
-def process_wavenet_results(tss, forecasts, df_input, start_test, freq, prediction_length, sku):
-    all_results = []
 
-    for i, (tss_series, forecast) in enumerate(zip(tss, forecasts)):
-        latest_tss = tss_series.iloc[-prediction_length:].values.flatten()
-        pdv_codigo_name = df_input.columns[i + 1]
+def random_search_params(train_ds, val_ds,  ts_code, freq, prediction_length):
+    '''Random search for hyperparameters for WaveNet'''
 
-        results = pd.DataFrame({
-            'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
-            'cant_vta': latest_tss,
-            'cant_vta_pred_wavenet': forecast.mean,
-            'pdv_codigo': pdv_codigo_name,
-            'codigo_barras_sku': sku
-        })
-        all_results.append(results)
+    # Hyperparameter search space
+    hyperparameter_space = {
+        "num_residual_channels": [16, 24, 32, 48],  # Residual channels
+        "num_skip_channels": [16, 32, 48, 64],  # Skip channels
+        "num_stacks": [1, 2, 3],  # Number of stacks
+        "num_bins": [512, 1024, 2048],  # Discretization bins
+        "embedding_dimension": [5, 10, 20],  # Embedding dimension
+        "lr": [0.001, 0.005, 0.01],  # Learning rate
+        "weight_decay": [1e-8, 1e-6, 1e-4],  # Regularization
+        "batch_size": [16, 32, 64],  # Batch size
+        "num_batches_per_epoch": [25, 50, 100],  # Number of batches per epoch
+    }
 
-    final_results = pd.concat(all_results, ignore_index=True)
-    final_results.rename(columns={'date': 'fecha_comercial'}, inplace=True)
-    final_results['pdv_codigo'] = final_results['pdv_codigo'].str.extract(r'(\d+)$').astype(int)
-    final_results['fecha_comercial'] = pd.to_datetime(final_results['fecha_comercial'])
-    final_results['codigo_barras_sku'] = final_results['codigo_barras_sku'].astype(int)
-    final_results['pdv_codigo'] = final_results['pdv_codigo'].astype(int)
-    final_results.drop(columns=['cant_vta'], inplace=True)
+    # Randomly sample N sets of hyperparameters
+    random_hyperparameter_sets = [
+        {key: random.choice(values) for key, values in hyperparameter_space.items()}
+        for _ in range(N_TRIALS)
+    ]
 
-    return final_results
+    best_rmse = float("inf")
+    best_hyperparams = None
+
+    for hyperparams in random_hyperparameter_sets:
+        print(f"Training with hyperparams: {hyperparams}")
+
+        # Define the WaveNet model with sampled hyperparameters
+        estimator = WaveNetEstimator(
+            freq=freq,
+            prediction_length=prediction_length,
+            num_residual_channels=hyperparams["num_residual_channels"],
+            num_skip_channels=hyperparams["num_skip_channels"],
+            num_stacks=hyperparams["num_stacks"],
+            num_bins=hyperparams["num_bins"],
+            embedding_dimension=hyperparams["embedding_dimension"],
+            lr=hyperparams["lr"],
+            weight_decay=hyperparams["weight_decay"],
+            batch_size=hyperparams["batch_size"],
+            num_batches_per_epoch=hyperparams["num_batches_per_epoch"],
+            seasonality=get_seasonality(freq),
+            use_log_scale_feature=True,
+            trainer_kwargs={"max_epochs": 5},
+        )
+
+        predictor = estimator.train(training_data=train_ds)
+
+        # Make validation predictions
+        tss, forecasts = make_predictions(
+            predictor=predictor,
+            test_ds=val_ds
+        )
+
+        # Compute RMSE as evaluation metric
+        predictions_mean = np.array([forecast.mean for forecast in forecasts])
+        actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
+        actuals = actuals.reshape(predictions_mean.shape)
+
+        rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
+        print(f"RMSE for this model: {rmse}")
+
+        # Store the best hyperparameters
+        if rmse < best_rmse:
+            best_rmse = rmse
+            best_hyperparams = hyperparams
+
+    print(f"Best Hyperparameters: {best_hyperparams}, RMSE: {best_rmse}")
+    return best_hyperparams
 
 # Main function
 def wavenet_main(features):
-
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
@@ -101,65 +129,65 @@ def wavenet_main(features):
 
     all_final_results = []
     for sku in valid_skus:
-      print(f"Processing SKU: {sku}")
-      filtered = features[(features["codigo_barras_sku"] == sku)].copy()
-      # Skip if no data is available for the SKU
-      if len(filtered) == 0:
-          print(f"No data available for SKU: {sku}")
-          continue
+        print(f"Processing SKU: {sku}")
+        filtered = features[(features["codigo_barras_sku"] == sku)].copy()
+        
+        # Prepare dataset
+        try:
+            train_ds , val_ds, test_ds, ts_code, df_input = prepare_dataset(
+                data=filtered,
+                start_train=START_TRAIN,
+                end_test=END_TEST,
+                freq=FREQ,
+                prediction_length=PREDICTION_LENGTH
+            )
+        except ValueError as e:
+            print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
+            continue
 
-      # Check for NaNs or invalid values
-      if filtered.isnull().any().any():
-          print(f"SKU {sku} contains NaNs. Skipping.")
-          continue
+        # Train the model
+        try:
+            # Random Search
+            best_params= random_search_params(
+                train_ds=train_ds,
+                val_ds=val_ds,
+                ts_code=ts_code,
+                freq=FREQ,
+                prediction_length=PREDICTION_LENGTH
+            )
+            # Train the final model with the best hyperparameters
+            predictor = train_best_model(
+                val_ds=val_ds,
+                ts_code=ts_code,
+                freq=FREQ,
+                prediction_length=PREDICTION_LENGTH,
+                hyperparams=best_params
+            )
+        except ValueError as e:
+            print(f"Skipping SKU {sku} in training due to error: {e}")
+            continue
 
-      # Prepare dataset
-      try:
-          df_train, df_test, ts_code, df_input = prepare_dataset(
-              data=filtered,
-              end_test=END_TEST,
-              freq=FREQ,
-              prediction_length=PREDICTION_LENGTH
-          )
-      except ValueError as e:
-          print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
-          continue
+        # Make predictions
+        tss, forecasts = make_predictions(
+                predictor=predictor,
+                test_ds =test_ds 
+        )
 
-      # Train the model
-      try:
-          predictor = train_wavenet_model(
-              df_train=df_train,
-              ts_code=ts_code,
-              start_date=START_TRAIN,
-              freq=FREQ,
-              prediction_length=PREDICTION_LENGTH
-          )
-      except ValueError as e:
-          print(f"Skipping SKU {sku} in training due to error: {e}")
-          continue
+        # Process results
+        final_results = process_results(
+            tss=tss,
+            forecasts=forecasts,
+            df_input=df_input,
+            start_test=START_TEST,
+            freq=FREQ,
+            prediction_length=PREDICTION_LENGTH,
+            sku=sku,
+            model_name="wavenet",
+            median=False
+        )
 
-      # Make predictions
-      tss, forecasts = make_predictions(
-          predictor=predictor,
-          df_test=df_test,
-          ts_code=ts_code,
-          start_date=START_TRAIN,
-          freq=FREQ
-      )
-
-      # Process results
-      final_results = process_wavenet_results(
-          tss=tss,
-          forecasts=forecasts,
-          df_input=df_input,
-          start_test=START_TEST,
-          freq=FREQ,
-          prediction_length=PREDICTION_LENGTH,
-          sku=sku
-      )
-
-      # Append results for the current SKU
-      all_final_results.append(final_results)
+        # Append results for the current SKU
+        all_final_results.append(final_results)
 
 
     combined_results = pd.concat(all_final_results, ignore_index=True)
@@ -185,7 +213,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:3]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
 
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
