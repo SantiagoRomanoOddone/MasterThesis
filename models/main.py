@@ -114,7 +114,7 @@ if __name__ == '__main__':
     test_df = pd.merge(test_df, simple_feedforward_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
 
-
+     # TODO: ANALIZE WHAT TO DO WHEN THERE ARE NULLS IN THE REAL VALUES
     summary_df = Metrics().create_summary_dataframe(test_df)
     # summary_df.to_csv('summary_custer_3_total.csv', index=False)
 
