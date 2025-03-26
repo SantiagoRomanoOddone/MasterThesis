@@ -36,41 +36,92 @@ def set_random_seed(seed=42):
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
-# Prepare dataset for DeepAR
+def create_temporal_features(date_index):
+    """
+    Creates temporal features from a datetime index.
+    """
+    temporal_features = pd.DataFrame(index=date_index)
+    temporal_features['year'] = temporal_features.index.year
+    temporal_features['month'] = temporal_features.index.month
+    temporal_features['day'] = temporal_features.index.day
+    temporal_features['day_of_week'] = temporal_features.index.dayofweek
+    temporal_features['is_weekend'] = temporal_features['day_of_week'].isin([5, 6]).astype(int)
+    temporal_features['quarter'] = temporal_features.index.quarter
+    temporal_features['week_of_year'] = temporal_features.index.isocalendar().week.astype(int)
+    temporal_features['day_of_year'] = temporal_features.index.dayofyear
+    temporal_features['is_month_start'] = temporal_features.index.is_month_start.astype(int)
+    temporal_features['is_month_end'] = temporal_features.index.is_month_end.astype(int)
+    temporal_features['is_first_week'] = (temporal_features['week_of_year'] == 1).astype(int)
+    temporal_features['is_last_week'] = (temporal_features['week_of_year'].isin([52, 53])).astype(int)
+    
+    return temporal_features
+
 def prepare_dataset(data, start_train, end_test, freq, prediction_length):
+    # Step 1: Pivot the data (keeping fecha_comercial as index)
     df = data.pivot(index="fecha_comercial", columns="pdv_codigo", values="cant_vta")
-    # Adding the prediction_length to the dataset
-    date_range = pd.date_range(start=df.index.min(), end=end_test, freq=freq)
-    df = df.reindex(date_range)
+
+    # Step 2: Create complete date range
+    full_date_range = pd.date_range(start=df.index.min(), end=end_test, freq=freq)
+
+    # Step 3: Create base DataFrame with all required dates
+    full_index_df = pd.DataFrame(index=full_date_range)
+
+    # Step 4: Reindex original data to complete range
+    df = df.reindex(full_date_range)
+
+    # Step 5: Generate temporal features
+    temporal_features = create_temporal_features(full_index_df.index)
+
+    # Step 6: Prepare final DataFrame structure
     df.columns = [f"pdv_codigo_{col}" for col in df.columns]
     df_input = df.reset_index().rename(columns={"index": "date"})
-
     ts_code = np.arange(len(df_input.columns[1:]), dtype=int)
     ts_code_mapping = dict(zip(df_input.columns[1:], ts_code))
     df_values = df_input.iloc[:, 1:].astype(float)
-
-    # leaving the last month of df_train for validation
+    
+    # Step 7: Split data (train/val/test)
     df_train = df_values.iloc[:-prediction_length * 2, :].values
     df_val = df_values.iloc[:-prediction_length, :].values
     df_test = df_values.iloc[:, :].values
-
-    # Create ListDataset
-    train_ds = create_list_dataset(df_train, ts_code, start_train, freq)
-    val_ds = create_list_dataset(df_val, ts_code, start_train, freq)
-    test_ds = create_list_dataset(df_test, ts_code, start_train, freq)
-
+    
+    # Step 8: Split temporal features accordingly
+    temporal_features_train = temporal_features.iloc[:-prediction_length * 2, :].values
+    temporal_features_val = temporal_features.iloc[:-prediction_length, :].values
+    temporal_features_test = temporal_features.iloc[:, :].values
+    
+    # Step 9: Create datasets
+    train_ds = create_list_dataset(
+        df_train, ts_code, start_train, freq, temporal_features_train
+    )
+    val_ds = create_list_dataset(
+        df_val, ts_code, start_train, freq, temporal_features_val
+    )
+    test_ds = create_list_dataset(
+        df_test, ts_code, start_train, freq, temporal_features_test
+    )
+    
     return train_ds, val_ds, test_ds, ts_code, df_input
 
-# Create ListDataset
-def create_list_dataset(data, ts_code, start_date, freq):
-    return ListDataset([
-        {
-            FieldName.TARGET: target,
-            FieldName.START: start_date,
-            FieldName.FEAT_STATIC_CAT: [fsc]
-        }
-        for target, fsc in zip(data.T, ts_code)
-    ], freq=freq)
+def create_list_dataset(data, ts_code, start_date, freq, temporal_features=None):
+    if temporal_features is not None:
+        return ListDataset([
+            {
+                FieldName.TARGET: target,
+                FieldName.START: start_date,
+                FieldName.FEAT_STATIC_CAT: [fsc],
+                FieldName.FEAT_DYNAMIC_REAL: temporal_features.T
+            }
+            for target, fsc in zip(data.T, ts_code)
+        ], freq=freq)
+    else:
+        return ListDataset([
+            {
+                FieldName.TARGET: target,
+                FieldName.START: start_date,
+                FieldName.FEAT_STATIC_CAT: [fsc]
+            }
+            for target, fsc in zip(data.T, ts_code)
+        ], freq=freq)
 
 # Make predictions
 def make_predictions(predictor, test_ds):
