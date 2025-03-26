@@ -50,6 +50,7 @@ class Metrics:
         return pd.Series(metrics)
 
     def create_summary_dataframe(self, test_df):
+        # TODO: ANALIZE WHAT TO DO WHEN THERE ARE NULLS IN THE REAL VALUES
         summary_df = test_df.groupby(['pdv_codigo', 'codigo_barras_sku']).apply(self.calculate_metrics).reset_index()
 
         rmse_columns = [col for col in summary_df.columns if col.startswith('rmse_')]

@@ -207,9 +207,10 @@ if __name__ == "__main__":
     DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
 
     features = pd.read_parquet(DATA_PATH)
-    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster']]
+    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
+        'cant_vta','cluster_sku']]
     features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    filtered = features[features["cluster"] == CLUSTER_NUMBER]
+    filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
     filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
