@@ -14,13 +14,13 @@ random.seed(random_seed)
 np.random.seed(random_seed)
 import pandas as pd
 
-CLUSTER_NUMBER = 3
+
 FREQ = "D"
 PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 2 
+N_TRIALS = 4 
 
 
 def train_best_model(val_ds, prediction_length, hyperparams):
@@ -55,7 +55,6 @@ def random_search_params(train_ds, val_ds, prediction_length):
     }
 
     # Randomly sample N sets of hyperparameters
-    N_TRIALS = 2  # Number of trials for random search
     random_hyperparameter_sets = [
         {key: random.choice(values) for key, values in hyperparameter_space.items()}
         for _ in range(N_TRIALS)
@@ -186,29 +185,30 @@ def sff_main(features):
     return combined_results
 
 if __name__ == "__main__":
-    # Constants
-    CLUSTER_NUMBER = 3
-    FREQ = "D"
-    PREDICTION_LENGTH = 30
-    START_TRAIN = pd.Timestamp("2022-12-01")
-    START_TEST = pd.Timestamp("2024-11-01")
-    END_TEST = pd.Timestamp("2024-11-30")
+    pass
+    # # Constants
+    # CLUSTER_NUMBER = 3
+    # FREQ = "D"
+    # PREDICTION_LENGTH = 30
+    # START_TRAIN = pd.Timestamp("2022-12-01")
+    # START_TEST = pd.Timestamp("2024-11-01")
+    # END_TEST = pd.Timestamp("2024-11-30")
 
-    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
+    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
 
-    features = pd.read_parquet(DATA_PATH)
-    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
-        'cant_vta','cluster_sku']]
-    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
-    filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
-    validation = filtered[filtered['fecha_comercial'] >= START_TEST]
-    filtered = filtered[filtered['fecha_comercial'] < START_TEST]
+    # features = pd.read_parquet(DATA_PATH)
+    # features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
+    #     'cant_vta','cluster_sku']]
+    # features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
+    # filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
+    # filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
+    # validation = filtered[filtered['fecha_comercial'] >= START_TEST]
+    # filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:3]
+    # filter = filtered['codigo_barras_sku'].unique()[:3]
 
-    filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
+    # filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
-    final_results = sff_main(filtered)
-    print(final_results)
+    # final_results = sff_main(filtered)
+    # print(final_results)

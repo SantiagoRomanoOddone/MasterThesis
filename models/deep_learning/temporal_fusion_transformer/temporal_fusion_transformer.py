@@ -12,14 +12,13 @@ np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
 
-PREDICTION_LENGTH = 30
-CLUSTER_NUMBER = 3
+
 FREQ = "D"
 PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 2  # Number of trials for random search
+N_TRIALS = 4  # Number of trials for random search
 
 def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
     '''Train the model with the best hyperparameters for TemporalFusionTransformer'''
@@ -196,29 +195,30 @@ def tft_main(features):
 
 
 if __name__ == "__main__":
-    # Constants
-    CLUSTER_NUMBER = 3
-    FREQ = "D"
-    PREDICTION_LENGTH = 30
-    START_TRAIN = pd.Timestamp("2022-12-01")
-    START_TEST = pd.Timestamp("2024-11-01")
-    END_TEST = pd.Timestamp("2024-11-30")
+    pass
+    # # Constants
+    # CLUSTER_NUMBER = 3
+    # FREQ = "D"
+    # PREDICTION_LENGTH = 30
+    # START_TRAIN = pd.Timestamp("2022-12-01")
+    # START_TEST = pd.Timestamp("2024-11-01")
+    # END_TEST = pd.Timestamp("2024-11-30")
 
-    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
+    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
 
-    features = pd.read_parquet(DATA_PATH)
-    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
-        'cant_vta','cluster_sku']]
-    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
-    filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
-    validation = filtered[filtered['fecha_comercial'] >= START_TEST]
-    filtered = filtered[filtered['fecha_comercial'] < START_TEST]
+    # features = pd.read_parquet(DATA_PATH)
+    # features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
+    #     'cant_vta','cluster_sku']]
+    # features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
+    # filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
+    # filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
+    # validation = filtered[filtered['fecha_comercial'] >= START_TEST]
+    # filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:1]
+    # filter = filtered['codigo_barras_sku'].unique()[:1]
 
-    filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
+    # filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
-    final_results = tft_main(filtered)
-    print(final_results)
+    # final_results = tft_main(filtered)
+    # print(final_results)
