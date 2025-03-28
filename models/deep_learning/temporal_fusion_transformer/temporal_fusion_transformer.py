@@ -22,7 +22,7 @@ START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
 N_TRIALS = 4  # Number of trials for random search
 
-def get_tft_hiperparameter_space():
+def get_tft_hiperparameter_space(ts_code):
     """Returns hyperparameter search space and fixed parameters for TFT model"""
     tft_space = {
         "hidden_dim": [16, 32, 64, 128],        # Hidden layer size
@@ -37,6 +37,8 @@ def get_tft_hiperparameter_space():
     
     tft_fixed = {
         "context_length": PREDICTION_LENGTH,
+        "dynamic_dims": [12],  # FEAT_DYNAMIC_REAL
+        "static_cardinalities": [len(np.unique(ts_code))],  # FEAT_STATIC_CAT
         "trainer_kwargs": {"max_epochs": 5}
     }
     return tft_space, tft_fixed
@@ -76,7 +78,7 @@ def tft_main(features):
         # Train the model
         try:
             # Get TFT-specific parameters
-            tft_space, tft_fixed = get_tft_hiperparameter_space()
+            tft_space, tft_fixed = get_tft_hiperparameter_space(ts_code)
 
             # Random Search
             best_tft_params = general_random_search(
@@ -130,29 +132,29 @@ def tft_main(features):
 
 
 if __name__ == "__main__":
-    pass
-    # # Constants
-    # CLUSTER_NUMBER = 0
-    # FREQ = "D"
-    # PREDICTION_LENGTH = 30
-    # START_TRAIN = pd.Timestamp("2022-12-01")
-    # START_TEST = pd.Timestamp("2024-11-01")
-    # END_TEST = pd.Timestamp("2024-11-30")
 
-    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
+    # Constants
+    CLUSTER_NUMBER = 0
+    FREQ = "D"
+    PREDICTION_LENGTH = 30
+    START_TRAIN = pd.Timestamp("2022-12-01")
+    START_TEST = pd.Timestamp("2024-11-01")
+    END_TEST = pd.Timestamp("2024-11-30")
 
-    # features = pd.read_parquet(DATA_PATH)
-    # features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
-    #     'cant_vta','cluster_sku']]
-    # features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    # filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
-    # filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
-    # validation = filtered[filtered['fecha_comercial'] >= START_TEST]
-    # filtered = filtered[filtered['fecha_comercial'] < START_TEST]
+    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
 
-    # filter = filtered['codigo_barras_sku'].unique()[:1]
+    features = pd.read_parquet(DATA_PATH)
+    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
+        'cant_vta','cluster_sku']]
+    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
+    filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
+    filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
+    validation = filtered[filtered['fecha_comercial'] >= START_TEST]
+    filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    # filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
 
-    # final_results = tft_main(filtered)
-    # print(final_results)
+    filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
+
+    final_results = tft_main(filtered)
+    print(final_results)
