@@ -39,7 +39,8 @@ def get_hiperparameter_space(prediction_length):
     
     sff_fixed = {
         "prediction_length": prediction_length,
-        "trainer_kwargs": {"max_epochs": 5}  
+        "trainer_kwargs": {"max_epochs": 5},
+        # "num_feat_dynamic_real": 12
     }
     
     return sff_space, sff_fixed
@@ -69,7 +70,8 @@ def sff_main(features):
                 start_train=START_TRAIN,
                 end_test=END_TEST,
                 freq=FREQ,
-                prediction_length=PREDICTION_LENGTH
+                prediction_length=PREDICTION_LENGTH,
+                temporal_features=True # Use temporal features
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
@@ -81,7 +83,7 @@ def sff_main(features):
             # Random Search
             sff_space, sff_fixed = get_hiperparameter_space(PREDICTION_LENGTH)
             best_params= general_random_search(
-            train_ds, val_ds, ts_code, FREQ, PREDICTION_LENGTH,
+            train_ds, val_ds, PREDICTION_LENGTH,
             model_class=SimpleFeedForwardEstimator,
             hyperparameter_space=sff_space,
             n_trials=N_TRIALS,
@@ -91,9 +93,6 @@ def sff_main(features):
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
-            ts_code=ts_code,
-            freq=FREQ,
-            prediction_length=PREDICTION_LENGTH,
             model_class=SimpleFeedForwardEstimator,
             hyperparams=best_params,
             fixed_params=sff_fixed

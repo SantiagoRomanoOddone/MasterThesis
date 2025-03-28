@@ -1,12 +1,12 @@
 from gluonts.torch import WaveNetEstimator
-from gluonts.time_feature import get_seasonality
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
                                                     general_random_search,
                                                     process_results,
-                                                    train_best_model)
+                                                    train_best_model,
+                                                    get_custom_time_features)
 
 import numpy as np
 import random
@@ -22,7 +22,7 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4
+N_TRIALS = 1
 
 def get_hiperparameter_space(ts_code):
     """Hyperparameter space for WaveNetEstimator with temporal features support."""
@@ -41,11 +41,12 @@ def get_hiperparameter_space(ts_code):
     wavenet_fixed = {
         "prediction_length": PREDICTION_LENGTH,
         "freq": FREQ,
-        "num_feat_dynamic_real": 12,  # Matches your temporal features count
+        # "num_feat_dynamic_real": 12,  
         "num_feat_static_cat": 1,  # For your store IDs
         "cardinality": [len(np.unique(ts_code))],  # Cardinality of stores
         "use_log_scale_feature": True,
-        "trainer_kwargs": {"max_epochs": 5}
+        "trainer_kwargs": {"max_epochs": 5},
+         "time_features": get_custom_time_features(FREQ), 
     }
     
     return wavenet_space, wavenet_fixed

@@ -67,7 +67,7 @@ def create_temporal_features(date_index):
     
     return temporal_features
 
-def prepare_dataset(data, start_train, end_test, freq, prediction_length):
+def prepare_dataset(data, start_train, end_test, freq, prediction_length, temporal_features=None):
     # Step 1: Pivot the data (keeping fecha_comercial as index)
     df = data.pivot(index="fecha_comercial", columns="pdv_codigo", values="cant_vta")
 
@@ -80,9 +80,6 @@ def prepare_dataset(data, start_train, end_test, freq, prediction_length):
     # Step 4: Reindex original data to complete range
     df = df.reindex(full_date_range)
 
-    # # Step 5: Generate temporal features
-    # temporal_features = create_temporal_features(full_index_df.index)
-
     # Step 6: Prepare final DataFrame structure
     df.columns = [f"pdv_codigo_{col}" for col in df.columns]
     df_input = df.reset_index().rename(columns={"index": "date"})
@@ -94,39 +91,44 @@ def prepare_dataset(data, start_train, end_test, freq, prediction_length):
     df_train = df_values.iloc[:-prediction_length * 2, :].values
     df_val = df_values.iloc[:-prediction_length, :].values
     df_test = df_values.iloc[:, :].values
-    
-    # # Step 8: Split temporal features accordingly
-    # temporal_features_train = temporal_features.iloc[:-prediction_length * 2, :].values
-    # temporal_features_val = temporal_features.iloc[:-prediction_length, :].values
-    # temporal_features_test = temporal_features.iloc[:, :].values
 
-    # scaler = MinMaxScaler()
-    # scaler.fit(temporal_features_train)  # Fit ONLY on train
-    # temporal_features_train = scaler.transform(temporal_features_train)
-    # temporal_features_val = scaler.transform(temporal_features_val)
-    # temporal_features_test = scaler.transform(temporal_features_test)
+    if temporal_features:
+        # Step 5: Generate temporal features
+        temporal_features = create_temporal_features(full_index_df.index)
+        
+        # Step 8: Split temporal features accordingly
+        temporal_features_train = temporal_features.iloc[:-prediction_length * 2, :].values
+        temporal_features_val = temporal_features.iloc[:-prediction_length, :].values
+        temporal_features_test = temporal_features.iloc[:, :].values
 
-    # # Step 9: Create datasets
-    # train_ds = create_list_dataset(
-    #     df_train, ts_code, start_train, freq, temporal_features_train
-    # )
-    # val_ds = create_list_dataset(
-    #     df_val, ts_code, start_train, freq, temporal_features_val
-    # )
-    # test_ds = create_list_dataset(
-    #     df_test, ts_code, start_train, freq, temporal_features_test
-    # )
-    # Step 9: Create datasets
-    train_ds = create_list_dataset(
-        df_train, ts_code, start_train, freq
-    )
-    val_ds = create_list_dataset(
-        df_val, ts_code, start_train, freq
-    )
-    test_ds = create_list_dataset(
-        df_test, ts_code, start_train, freq
-    )
-    
+        scaler = MinMaxScaler()
+        scaler.fit(temporal_features_train)  # Fit ONLY on train
+        temporal_features_train = scaler.transform(temporal_features_train)
+        temporal_features_val = scaler.transform(temporal_features_val)
+        temporal_features_test = scaler.transform(temporal_features_test)
+
+        # Step 9: Create datasets
+        train_ds = create_list_dataset(
+            df_train, ts_code, start_train, freq, temporal_features_train
+        )
+        val_ds = create_list_dataset(
+            df_val, ts_code, start_train, freq, temporal_features_val
+        )
+        test_ds = create_list_dataset(
+            df_test, ts_code, start_train, freq, temporal_features_test
+        )
+    else:
+        # Step 9: Create datasets
+        train_ds = create_list_dataset(
+            df_train, ts_code, start_train, freq
+        )
+        val_ds = create_list_dataset(
+            df_val, ts_code, start_train, freq
+        )
+        test_ds = create_list_dataset(
+            df_test, ts_code, start_train, freq
+        )
+        
     return train_ds, val_ds, test_ds, ts_code, df_input
 
 def create_list_dataset(data, ts_code, start_date, freq, temporal_features=None):
