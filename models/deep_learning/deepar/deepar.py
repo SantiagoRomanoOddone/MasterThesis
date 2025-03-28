@@ -35,7 +35,7 @@ def get_hiperparameter_space(ts_code):
     }
     deepar_fixed = {
     "num_feat_static_cat": 1,
-    "num_feat_dynamic_real": 0,
+    "num_feat_dynamic_real": 12,
     "num_feat_static_real": 0,
     "cardinality": [len(np.unique(ts_code))],
     "num_parallel_samples": 100,
@@ -127,30 +127,29 @@ def deepar_main(features):
 
 
 if __name__ == "__main__":
-    pass
-    # # Constants
-    # CLUSTER_NUMBER = 0
-    # FREQ = "D"
-    # PREDICTION_LENGTH = 30
-    # START_TRAIN = pd.Timestamp("2022-12-01")
-    # START_TEST = pd.Timestamp("2024-11-01")
-    # END_TEST = pd.Timestamp("2024-11-30")
+    # Constants
+    CLUSTER_NUMBER = 0
+    FREQ = "D"
+    PREDICTION_LENGTH = 30
+    START_TRAIN = pd.Timestamp("2022-12-01")
+    START_TEST = pd.Timestamp("2024-11-01")
+    END_TEST = pd.Timestamp("2024-11-30")
 
-    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
+    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
 
-    # features = pd.read_parquet(DATA_PATH)
-    # features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
-    #     'cant_vta','cluster_sku']]
-    # features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
-    # filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
-    # filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
-    # validation = filtered[filtered['fecha_comercial'] >= START_TEST]
-    # filtered = filtered[filtered['fecha_comercial'] < START_TEST]
+    features = pd.read_parquet(DATA_PATH)
+    features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
+        'cant_vta','cluster_sku']]
+    features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
+    filtered = features[features["cluster_sku"] == CLUSTER_NUMBER]
+    filtered = filtered[filtered['fecha_comercial'] <= END_TEST]
+    validation = filtered[filtered['fecha_comercial'] >= START_TEST]
+    filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    # filter = filtered['codigo_barras_sku'].unique()[:1]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
 
-    # filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
+    filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
-    # final_results = deepar_main(filtered)
-    # print(final_results)
+    final_results = deepar_main(filtered)
+    print(final_results)

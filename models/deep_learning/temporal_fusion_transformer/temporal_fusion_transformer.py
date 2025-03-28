@@ -4,7 +4,9 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    process_results)
+                                                    general_random_search,
+                                                    process_results,
+                                                    train_best_model)
 import numpy as np
 import random
 random_seed = 42
@@ -20,96 +22,24 @@ START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
 N_TRIALS = 4  # Number of trials for random search
 
-def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
-    '''Train the model with the best hyperparameters for TemporalFusionTransformer'''
-    estimator = TemporalFusionTransformerEstimator(
-        freq=freq,
-        prediction_length=prediction_length,
-        hidden_dim=hyperparams["hidden_dim"],
-        variable_dim=hyperparams["variable_dim"],
-        num_heads=hyperparams["num_heads"],
-        dropout_rate=hyperparams["dropout_rate"],
-        lr=hyperparams["lr"],
-        weight_decay=hyperparams["weight_decay"],
-        batch_size=hyperparams["batch_size"],
-        patience=hyperparams["patience"],
-        trainer_kwargs={"max_epochs": 5},
-    )
-    predictor = estimator.train(training_data=val_ds)
-    return predictor
-
-
-def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
-    '''Random search for hyperparameters for TemporalFusionTransformer'''
-
-    # Hyperparameter search space
-    hyperparameter_space = {
-        "hidden_dim": [16, 32, 64, 128],  # Hidden layer size
-        "variable_dim": [8, 16, 32],  # Variable representation dimension
-        "num_heads": [2, 4, 8],  # Attention heads
-        "dropout_rate": [0.1, 0.2, 0.3],  # Dropout rate
-        "lr": [0.001, 0.005, 0.01],  # Learning rate
-        "weight_decay": [1e-8, 1e-6, 1e-4],  # Regularization
-        "batch_size": [16, 32, 64],  # Batch size
-        "patience": [5, 10, 20]  # Early stopping patience
+def get_tft_hiperparameter_space():
+    """Returns hyperparameter search space and fixed parameters for TFT model"""
+    tft_space = {
+        "hidden_dim": [16, 32, 64, 128],        # Hidden layer size
+        "variable_dim": [8, 16, 32],             # Variable dimension
+        "num_heads": [2, 4, 8],                  # Attention heads
+        "dropout_rate": [0.1, 0.2, 0.3],         # Dropout rate
+        "lr": [0.001, 0.005, 0.01],              # Learning rate
+        "weight_decay": [1e-8, 1e-6, 1e-4],       # Regularization
+        "batch_size": [16, 32, 64],               # Batch size
+        "patience": [5, 10, 20]                   # Early stopping patience
     }
-    # Randomly sample N sets of hyperparameters
-    random_hyperparameter_sets = [
-        {key: random.choice(values) for key, values in hyperparameter_space.items()}
-        for _ in range(N_TRIALS)
-    ]
-
-    best_rmse = float("inf")
-    best_hyperparams = None
-
-    for hyperparams in random_hyperparameter_sets:
-        print(f"Training with hyperparams: {hyperparams}")
-
-        # Define the TemporalFusionTransformer model with sampled hyperparameters
-        estimator = TemporalFusionTransformerEstimator(
-            freq=freq,
-            prediction_length=prediction_length,
-            hidden_dim=hyperparams["hidden_dim"],
-            variable_dim=hyperparams["variable_dim"],
-            num_heads=hyperparams["num_heads"],
-            dropout_rate=hyperparams["dropout_rate"],
-            lr=hyperparams["lr"],
-            weight_decay=hyperparams["weight_decay"],
-            batch_size=hyperparams["batch_size"],
-            patience=hyperparams["patience"],
-            trainer_kwargs={"max_epochs": 5},
-        )
-        
-        predictor = estimator.train(training_data=train_ds)
-
-        # Make validation predictions
-        tss, forecasts = make_predictions(
-            predictor=predictor,
-            test_ds=val_ds
-        )
-
-        # Compute RMSE as evaluation metric
-        predictions_mean = np.array([forecast.mean for forecast in forecasts])
-        actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
-
-        actuals = actuals.reshape(predictions_mean.shape)
-
-        # TODO: improve this part
-        if np.isnan(actuals).any():
-            print("NaN values found in actuals, filling with 0")
-            actuals = np.nan_to_num(actuals, nan=0.0)
-        rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
-
-        print(f"RMSE for this model: {rmse}")
-
-        # Store the best hyperparameters
-        if rmse < best_rmse:
-            best_rmse = rmse
-            best_hyperparams = hyperparams
-
-    print(f"Best Hyperparameters: {best_hyperparams}, RMSE: {best_rmse}")
-    return best_hyperparams
-
+    
+    tft_fixed = {
+        "context_length": PREDICTION_LENGTH,
+        "trainer_kwargs": {"max_epochs": 5}
+    }
+    return tft_space, tft_fixed
 
 # Main function
 def tft_main(features):
@@ -145,33 +75,38 @@ def tft_main(features):
 
         # Train the model
         try:
+            # Get TFT-specific parameters
+            tft_space, tft_fixed = get_tft_hiperparameter_space()
+
             # Random Search
-            best_params= random_search_params(
-                train_ds=train_ds,
-                val_ds=val_ds,
-                ts_code=ts_code,
-                freq=FREQ,
-                prediction_length=PREDICTION_LENGTH
+            best_tft_params = general_random_search(
+                train_ds, val_ds, ts_code, FREQ, PREDICTION_LENGTH,
+                model_class=TemporalFusionTransformerEstimator,
+                hyperparameter_space=tft_space,
+                n_trials=N_TRIALS,
+                fixed_params=tft_fixed
             )
-            # Train the final model with the best hyperparameters
+
+            # Train final model
             predictor = train_best_model(
-                val_ds=val_ds,
+                val_ds=val_ds,  
                 ts_code=ts_code,
                 freq=FREQ,
                 prediction_length=PREDICTION_LENGTH,
-                hyperparams=best_params
+                model_class=TemporalFusionTransformerEstimator,
+                hyperparams=best_tft_params,
+                fixed_params=tft_fixed
             )
+
         except ValueError as e:
             print(f"Skipping SKU {sku} in training due to error: {e}")
             continue
-
 
         # Make predictions
         tss, forecasts = make_predictions(
                 predictor=predictor,
                 test_ds =test_ds 
         )
-
 
         # Process results
         final_results = process_results(
@@ -197,14 +132,14 @@ def tft_main(features):
 if __name__ == "__main__":
     pass
     # # Constants
-    # CLUSTER_NUMBER = 3
+    # CLUSTER_NUMBER = 0
     # FREQ = "D"
     # PREDICTION_LENGTH = 30
     # START_TRAIN = pd.Timestamp("2022-12-01")
     # START_TEST = pd.Timestamp("2024-11-01")
     # END_TEST = pd.Timestamp("2024-11-30")
 
-    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
+    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
 
     # features = pd.read_parquet(DATA_PATH)
     # features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
@@ -218,7 +153,6 @@ if __name__ == "__main__":
     # filter = filtered['codigo_barras_sku'].unique()[:1]
 
     # filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
-
 
     # final_results = tft_main(filtered)
     # print(final_results)
