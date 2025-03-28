@@ -161,5 +161,4 @@ if __name__ == "__main__":
     test_df = pd.merge(validation, final_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     summary_df = Metrics().create_summary_dataframe(test_df)
     print(summary_df['rmse_cant_vta_pred_wavenet_mean'].mean(), summary_df['rmse_cant_vta_pred_wavenet_mean'].median())
-    print(summary_df['rmse_cant_vta_pred_wavenet_median'].mean(), summary_df['rmse_cant_vta_pred_wavenet_median'].median())
     print(summary_df)
