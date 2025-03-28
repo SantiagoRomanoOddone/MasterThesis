@@ -2,7 +2,7 @@ from gluonts.dataset.common import ListDataset
 from gluonts.dataset.field_names import FieldName
 from gluonts.evaluation.backtest import make_evaluation_predictions
 from tqdm import tqdm
-
+import random 
 import pandas as pd
 import sys
 import numpy as np
@@ -187,3 +187,102 @@ def process_results(tss,
     final_results.drop(columns=['cant_vta'], inplace=True)
 
     return final_results
+
+
+# General random search for hyperparameter tuning
+def general_random_search(train_ds, val_ds, ts_code, freq, prediction_length,
+                         model_class, hyperparameter_space, n_trials, fixed_params=None):
+    """
+    General random search for hyperparameter tuning
+    
+    Parameters:
+    -----------
+    train_ds : Training dataset
+    val_ds : Validation dataset
+    ts_code : Time series codes
+    freq : Frequency of the data
+    prediction_length : Forecast horizon
+    model_class : The model estimator class (e.g. DeepAREstimator)
+    hyperparameter_space : Dict of hyperparameter search ranges
+    n_trials : Number of random trials
+    fixed_params : Dict of fixed parameters for the model (optional)
+    """
+    if fixed_params is None:
+        fixed_params = {}
+    
+    # Randomly sample N sets of hyperparameters
+    random_hyperparameter_sets = [
+        {key: random.choice(values) for key, values in hyperparameter_space.items()}
+        for _ in range(n_trials)
+    ]
+
+    best_rmse = float("inf")
+    best_hyperparams = None
+
+    for hyperparams in random_hyperparameter_sets:
+        print(f"\nTraining with hyperparams: {hyperparams}")
+
+        # Combine fixed and searchable params
+        all_params = {**fixed_params, **hyperparams}
+        
+        # Create estimator instance
+        estimator = model_class(
+            freq=freq,
+            prediction_length=prediction_length,
+            **all_params
+        )
+        
+        # Train and predict
+        predictor = estimator.train(training_data=train_ds)
+        tss, forecasts = make_predictions(predictor=predictor, test_ds=val_ds)
+        
+        # Calculate RMSE
+        predictions_mean = np.array([forecast.mean for forecast in forecasts])
+        actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
+        actuals = actuals.reshape(predictions_mean.shape)
+        
+        if np.isnan(actuals).any():
+            actuals = np.nan_to_num(actuals, nan=0.0)
+        
+        rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
+        print(f"RMSE achieved: {rmse:.4f}")
+        
+        # Store best model
+        if rmse < best_rmse:
+            best_rmse = rmse
+            best_hyperparams = hyperparams
+
+    print(f"\nBest RMSE: {best_rmse:.4f}")
+    print(f"Best hyperparameters: {best_hyperparams}")
+    return best_hyperparams
+
+def train_best_model(val_ds, ts_code, freq, prediction_length, 
+                    model_class, hyperparams, fixed_params=None):
+    '''
+    Train the final model with best hyperparameters
+    
+    Parameters:
+    -----------
+    train_ds : Training dataset
+    ts_code : Time series codes
+    freq : Frequency of the data
+    prediction_length : Forecast horizon
+    model_class : The model estimator class (e.g. DeepAREstimator)
+    hyperparams : Best hyperparameters from search
+    fixed_params : Dict of fixed parameters for the model (optional)
+    '''
+    if fixed_params is None:
+        fixed_params = {}
+    
+    # Combine all parameters
+    all_params = {**fixed_params, **hyperparams}
+    
+    # Create and train estimator
+    estimator = model_class(
+        freq=freq,
+        prediction_length=prediction_length,
+        **all_params
+    )
+    
+    predictor = estimator.train(training_data=val_ds)
+    return predictor

@@ -3,7 +3,9 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    process_results)
+                                                    general_random_search,
+                                                    process_results,
+                                                    train_best_model)
 
 import numpy as np
 import pandas as pd
@@ -22,100 +24,24 @@ END_TEST = pd.Timestamp("2024-11-30")
 N_TRIALS = 4 
 
 
-def train_best_model(val_ds, ts_code, freq, prediction_length, hyperparams):
-    '''Train the model with the best hyperparameters'''
-    estimator = DeepAREstimator(
-    freq=freq,
-    prediction_length=prediction_length,
-    num_layers=hyperparams["num_layers"],
-    hidden_size=hyperparams["hidden_size"],
-    lr=hyperparams["lr"],
-    weight_decay=hyperparams["weight_decay"],
-    dropout_rate=hyperparams["dropout_rate"],
-    batch_size=hyperparams["batch_size"],
-    num_feat_static_cat=1,
-    num_feat_dynamic_real=0,
-    num_feat_static_real=0,
-    cardinality=[len(np.unique(ts_code))],
-    num_parallel_samples=100,
-    trainer_kwargs={"max_epochs": 5},
-    )
-    predictor = estimator.train(training_data=val_ds)
-    return predictor
-
-
-def random_search_params(train_ds, val_ds, ts_code, freq, prediction_length):
-    '''Random search for hyperparameters'''
-
-    # Hyperparameter search space
-    hyperparameter_space = {
-        "num_layers": [1, 2, 3],
-        "hidden_size": [16, 32, 64, 128],
-        "lr": [0.001, 0.005, 0.01],
-        "dropout_rate": [0.1, 0.2, 0.3],
-        "batch_size": [16, 32, 64],
-        "weight_decay": [1e-8, 1e-6, 1e-4],
+def get_hiperparameter_space(ts_code):
+    deepar_space = {
+    "num_layers": [1, 2, 3],
+    "hidden_size": [16, 32, 64, 128],
+    "lr": [0.001, 0.005, 0.01],
+    "dropout_rate": [0.1, 0.2, 0.3],
+    "batch_size": [16, 32, 64],
+    "weight_decay": [1e-8, 1e-6, 1e-4],
     }
-
-    # Randomly sample N sets of hyperparameters
-    random_hyperparameter_sets = [
-        {key: random.choice(values) for key, values in hyperparameter_space.items()}
-        for _ in range(N_TRIALS)
-    ]
-
-    best_rmse = float("inf")
-    best_hyperparams = None
-
-    for hyperparams in random_hyperparameter_sets:
-        print(f"Training with hyperparams: {hyperparams}")
-
-        # Define the model with the sampled hyperparameters
-        estimator = DeepAREstimator(
-            freq=freq,
-            prediction_length=prediction_length,
-            num_layers=hyperparams["num_layers"],
-            hidden_size=hyperparams["hidden_size"],
-            lr=hyperparams["lr"],
-            weight_decay=hyperparams["weight_decay"],
-            dropout_rate=hyperparams["dropout_rate"],
-            batch_size=hyperparams["batch_size"],
-            num_feat_static_cat=1,
-            num_feat_dynamic_real=0,
-            num_feat_static_real=0,
-            cardinality=[len(np.unique(ts_code))],
-            num_parallel_samples=100,
-            trainer_kwargs={"max_epochs": 5},
-        )
-        predictor = estimator.train(training_data=train_ds)
-
-        # Make validation predictions
-        tss, forecasts = make_predictions(
-            predictor=predictor,
-            test_ds=val_ds
-        )
-
-        # Compute RMSE as evaluation metricvalidation_step`
-        predictions_mean = np.array([forecast.mean for forecast in forecasts])
-        actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
-
-        actuals = actuals.reshape(predictions_mean.shape)
-
-        # TODO: improve this part
-        if np.isnan(actuals).any():
-            print("NaN values found in actuals, filling with 0")
-            actuals = np.nan_to_num(actuals, nan=0.0)
-
-        rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
-
-        print(f"RMSE for this model: {rmse}")
-
-        # Store the best model
-        if rmse < best_rmse:
-            best_rmse = rmse
-            best_hyperparams = hyperparams
-
-    print(f"Best Hyperparameters: {best_hyperparams}, RMSE: {best_rmse}")
-    return best_hyperparams
+    deepar_fixed = {
+    "num_feat_static_cat": 1,
+    "num_feat_dynamic_real": 0,
+    "num_feat_static_real": 0,
+    "cardinality": [len(np.unique(ts_code))],
+    "num_parallel_samples": 100,
+    "trainer_kwargs": {"max_epochs": 5}
+    }
+    return deepar_space, deepar_fixed
 
 # Main function
 def deepar_main(features):
@@ -151,20 +77,24 @@ def deepar_main(features):
         # Train the model
         try:
             # Random Search
-            best_params= random_search_params(
-                train_ds=train_ds,
-                val_ds=val_ds,
-                ts_code=ts_code,
-                freq=FREQ,
-                prediction_length=PREDICTION_LENGTH
-            )
+            deepar_space, deepar_fixed = get_hiperparameter_space(ts_code)
+            best_params= general_random_search(
+            train_ds, val_ds, ts_code, FREQ, PREDICTION_LENGTH,
+            model_class=DeepAREstimator,
+            hyperparameter_space=deepar_space,
+            n_trials=N_TRIALS,
+            fixed_params=deepar_fixed
+            )   
+
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
-                val_ds=val_ds,
-                ts_code=ts_code,
-                freq=FREQ,
-                prediction_length=PREDICTION_LENGTH,
-                hyperparams=best_params
+            val_ds=val_ds,  
+            ts_code=ts_code,
+            freq=FREQ,
+            prediction_length=PREDICTION_LENGTH,
+            model_class=DeepAREstimator,
+            hyperparams=best_params,
+            fixed_params=deepar_fixed
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in training due to error: {e}")
@@ -206,7 +136,7 @@ if __name__ == "__main__":
     # START_TEST = pd.Timestamp("2024-11-01")
     # END_TEST = pd.Timestamp("2024-11-30")
 
-    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/features.parquet"
+    # DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
 
     # features = pd.read_parquet(DATA_PATH)
     # features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
