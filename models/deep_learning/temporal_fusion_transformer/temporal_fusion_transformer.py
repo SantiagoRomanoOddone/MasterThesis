@@ -6,13 +6,16 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     make_predictions,
                                                     general_random_search,
                                                     process_results,
-                                                    train_best_model)
+                                                    train_best_model,
+                                                    get_custom_time_features)
+
 import numpy as np
 import random
 random_seed = 42
 np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
+from metrics.metrics import Metrics
 
 
 FREQ = "D"
@@ -37,9 +40,12 @@ def get_tft_hiperparameter_space(ts_code):
     
     tft_fixed = {
         "context_length": PREDICTION_LENGTH,
-        "dynamic_dims": [12],  # FEAT_DYNAMIC_REAL
+        # "dynamic_dims": [12],  # FEAT_DYNAMIC_REAL
         "static_cardinalities": [len(np.unique(ts_code))],  # FEAT_STATIC_CAT
-        "trainer_kwargs": {"max_epochs": 5}
+        "trainer_kwargs": {"max_epochs": 5},
+        "time_features": get_custom_time_features(FREQ), 
+        "freq": FREQ,
+        "prediction_length": PREDICTION_LENGTH,
     }
     return tft_space, tft_fixed
 
@@ -82,7 +88,7 @@ def tft_main(features):
 
             # Random Search
             best_tft_params = general_random_search(
-                train_ds, val_ds, ts_code, FREQ, PREDICTION_LENGTH,
+                train_ds, val_ds, PREDICTION_LENGTH,
                 model_class=TemporalFusionTransformerEstimator,
                 hyperparameter_space=tft_space,
                 n_trials=N_TRIALS,
@@ -92,9 +98,6 @@ def tft_main(features):
             # Train final model
             predictor = train_best_model(
                 val_ds=val_ds,  
-                ts_code=ts_code,
-                freq=FREQ,
-                prediction_length=PREDICTION_LENGTH,
                 model_class=TemporalFusionTransformerEstimator,
                 hyperparams=best_tft_params,
                 fixed_params=tft_fixed

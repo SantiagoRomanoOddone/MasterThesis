@@ -1,11 +1,22 @@
 from gluonts.dataset.common import ListDataset
 from gluonts.dataset.field_names import FieldName
 from gluonts.evaluation.backtest import make_evaluation_predictions
+from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 import random 
 import pandas as pd
 import sys
 import numpy as np
+from typing import List
+from gluonts.time_feature import (
+    time_features_from_frequency_str,
+    TimeFeature,
+    month_of_year,
+    day_of_month,
+    day_of_week,
+    day_of_year,
+    week_of_year,
+)
 
 
 def check_data_requirements(data, prediction_length):
@@ -69,8 +80,8 @@ def prepare_dataset(data, start_train, end_test, freq, prediction_length):
     # Step 4: Reindex original data to complete range
     df = df.reindex(full_date_range)
 
-    # Step 5: Generate temporal features
-    temporal_features = create_temporal_features(full_index_df.index)
+    # # Step 5: Generate temporal features
+    # temporal_features = create_temporal_features(full_index_df.index)
 
     # Step 6: Prepare final DataFrame structure
     df.columns = [f"pdv_codigo_{col}" for col in df.columns]
@@ -84,31 +95,37 @@ def prepare_dataset(data, start_train, end_test, freq, prediction_length):
     df_val = df_values.iloc[:-prediction_length, :].values
     df_test = df_values.iloc[:, :].values
     
-    # Step 8: Split temporal features accordingly
-    temporal_features_train = temporal_features.iloc[:-prediction_length * 2, :].values
-    temporal_features_val = temporal_features.iloc[:-prediction_length, :].values
-    temporal_features_test = temporal_features.iloc[:, :].values
-    
-    # Step 9: Create datasets
-    train_ds = create_list_dataset(
-        df_train, ts_code, start_train, freq, temporal_features_train
-    )
-    val_ds = create_list_dataset(
-        df_val, ts_code, start_train, freq, temporal_features_val
-    )
-    test_ds = create_list_dataset(
-        df_test, ts_code, start_train, freq, temporal_features_test
-    )
+    # # Step 8: Split temporal features accordingly
+    # temporal_features_train = temporal_features.iloc[:-prediction_length * 2, :].values
+    # temporal_features_val = temporal_features.iloc[:-prediction_length, :].values
+    # temporal_features_test = temporal_features.iloc[:, :].values
+
+    # scaler = MinMaxScaler()
+    # scaler.fit(temporal_features_train)  # Fit ONLY on train
+    # temporal_features_train = scaler.transform(temporal_features_train)
+    # temporal_features_val = scaler.transform(temporal_features_val)
+    # temporal_features_test = scaler.transform(temporal_features_test)
+
     # # Step 9: Create datasets
     # train_ds = create_list_dataset(
-    #     df_train, ts_code, start_train, freq
+    #     df_train, ts_code, start_train, freq, temporal_features_train
     # )
     # val_ds = create_list_dataset(
-    #     df_val, ts_code, start_train, freq
+    #     df_val, ts_code, start_train, freq, temporal_features_val
     # )
     # test_ds = create_list_dataset(
-    #     df_test, ts_code, start_train, freq
+    #     df_test, ts_code, start_train, freq, temporal_features_test
     # )
+    # Step 9: Create datasets
+    train_ds = create_list_dataset(
+        df_train, ts_code, start_train, freq
+    )
+    val_ds = create_list_dataset(
+        df_val, ts_code, start_train, freq
+    )
+    test_ds = create_list_dataset(
+        df_test, ts_code, start_train, freq
+    )
     
     return train_ds, val_ds, test_ds, ts_code, df_input
 
@@ -287,3 +304,13 @@ def train_best_model(val_ds,
     
     predictor = estimator.train(training_data=val_ds)
     return predictor
+
+
+def get_custom_time_features(freq: str) -> List[TimeFeature]:
+    return [
+        month_of_year,
+        day_of_month,
+        day_of_week,
+        day_of_year,
+        week_of_year  
+    ]

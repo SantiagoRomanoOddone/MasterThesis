@@ -5,7 +5,8 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     make_predictions,
                                                     general_random_search,
                                                     process_results,
-                                                    train_best_model)
+                                                    train_best_model,
+                                                    get_custom_time_features)
 
 import numpy as np
 import pandas as pd
@@ -25,6 +26,7 @@ END_TEST = pd.Timestamp("2024-11-30")
 N_TRIALS = 4 
 
 
+
 def get_hiperparameter_space(ts_code):
     deepar_space = {
     "num_layers": [1, 2, 3],
@@ -36,13 +38,17 @@ def get_hiperparameter_space(ts_code):
     }
     deepar_fixed = {
     "num_feat_static_cat": 1,
-    "num_feat_dynamic_real": 12,
+    # "num_feat_dynamic_real": 12,
+    "num_feat_dynamic_real": 0, # using gluonts time features
+    "num_feat_dynamic_real": 0,
     "num_feat_static_real": 0,
     "cardinality": [len(np.unique(ts_code))],
     "num_parallel_samples": 100,
     'freq': FREQ,
     "prediction_length": PREDICTION_LENGTH,
-    "trainer_kwargs": {"max_epochs": 5}
+    "trainer_kwargs": {"max_epochs": 5},
+    # "time_features": []
+    "time_features": get_custom_time_features(FREQ), 
     }
     return deepar_space, deepar_fixed
 
