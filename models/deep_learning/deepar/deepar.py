@@ -14,6 +14,7 @@ random_seed = 42
 np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
+from metrics.metrics import Metrics
 
 
 FREQ = "D"
@@ -39,6 +40,8 @@ def get_hiperparameter_space(ts_code):
     "num_feat_static_real": 0,
     "cardinality": [len(np.unique(ts_code))],
     "num_parallel_samples": 100,
+    'freq': FREQ,
+    "prediction_length": PREDICTION_LENGTH,
     "trainer_kwargs": {"max_epochs": 5}
     }
     return deepar_space, deepar_fixed
@@ -79,7 +82,7 @@ def deepar_main(features):
             # Random Search
             deepar_space, deepar_fixed = get_hiperparameter_space(ts_code)
             best_params= general_random_search(
-            train_ds, val_ds, ts_code, FREQ, PREDICTION_LENGTH,
+            train_ds, val_ds, PREDICTION_LENGTH,
             model_class=DeepAREstimator,
             hyperparameter_space=deepar_space,
             n_trials=N_TRIALS,
@@ -89,9 +92,6 @@ def deepar_main(features):
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
-            ts_code=ts_code,
-            freq=FREQ,
-            prediction_length=PREDICTION_LENGTH,
             model_class=DeepAREstimator,
             hyperparams=best_params,
             fixed_params=deepar_fixed
@@ -128,7 +128,7 @@ def deepar_main(features):
 
 if __name__ == "__main__":
     # Constants
-    CLUSTER_NUMBER = 0
+    CLUSTER_NUMBER = 1
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
@@ -146,10 +146,15 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:1]
-
+    filter = filtered['codigo_barras_sku'].unique()[:2]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
     final_results = deepar_main(filtered)
-    print(final_results)
+    
+    validation = validation[validation['codigo_barras_sku'].isin(filter)]
+    test_df = pd.merge(validation, final_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    summary_df = Metrics().create_summary_dataframe(test_df)
+    print(summary_df['rmse_cant_vta_pred_deepar_mean'].mean(), summary_df['rmse_cant_vta_pred_deepar_mean'].median())
+    print(summary_df['rmse_cant_vta_pred_deepar_median'].mean(), summary_df['rmse_cant_vta_pred_deepar_median'].median())
+    print(summary_df)

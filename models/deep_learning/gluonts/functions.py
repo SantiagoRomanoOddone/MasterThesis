@@ -99,6 +99,16 @@ def prepare_dataset(data, start_train, end_test, freq, prediction_length):
     test_ds = create_list_dataset(
         df_test, ts_code, start_train, freq, temporal_features_test
     )
+    # # Step 9: Create datasets
+    # train_ds = create_list_dataset(
+    #     df_train, ts_code, start_train, freq
+    # )
+    # val_ds = create_list_dataset(
+    #     df_val, ts_code, start_train, freq
+    # )
+    # test_ds = create_list_dataset(
+    #     df_test, ts_code, start_train, freq
+    # )
     
     return train_ds, val_ds, test_ds, ts_code, df_input
 
@@ -129,8 +139,8 @@ def make_predictions(predictor, test_ds):
     forecast_it, ts_it = make_evaluation_predictions(
         dataset=test_ds,
         predictor=predictor,
-        num_samples=100,
-        # num_samples=50,
+        # num_samples=100,
+        num_samples=50,
 
     )
 
@@ -190,7 +200,7 @@ def process_results(tss,
 
 
 # General random search for hyperparameter tuning
-def general_random_search(train_ds, val_ds, ts_code, freq, prediction_length,
+def general_random_search(train_ds, val_ds, prediction_length,
                          model_class, hyperparameter_space, n_trials, fixed_params=None):
     """
     General random search for hyperparameter tuning
@@ -199,8 +209,6 @@ def general_random_search(train_ds, val_ds, ts_code, freq, prediction_length,
     -----------
     train_ds : Training dataset
     val_ds : Validation dataset
-    ts_code : Time series codes
-    freq : Frequency of the data
     prediction_length : Forecast horizon
     model_class : The model estimator class (e.g. DeepAREstimator)
     hyperparameter_space : Dict of hyperparameter search ranges
@@ -224,11 +232,9 @@ def general_random_search(train_ds, val_ds, ts_code, freq, prediction_length,
 
         # Combine fixed and searchable params
         all_params = {**fixed_params, **hyperparams}
-        
+
         # Create estimator instance
         estimator = model_class(
-            freq=freq,
-            prediction_length=prediction_length,
             **all_params
         )
         
@@ -256,7 +262,7 @@ def general_random_search(train_ds, val_ds, ts_code, freq, prediction_length,
     print(f"Best hyperparameters: {best_hyperparams}")
     return best_hyperparams
 
-def train_best_model(val_ds, ts_code, freq, prediction_length, 
+def train_best_model(val_ds,
                     model_class, hyperparams, fixed_params=None):
     '''
     Train the final model with best hyperparameters
@@ -264,9 +270,6 @@ def train_best_model(val_ds, ts_code, freq, prediction_length,
     Parameters:
     -----------
     train_ds : Training dataset
-    ts_code : Time series codes
-    freq : Frequency of the data
-    prediction_length : Forecast horizon
     model_class : The model estimator class (e.g. DeepAREstimator)
     hyperparams : Best hyperparameters from search
     fixed_params : Dict of fixed parameters for the model (optional)
@@ -279,8 +282,6 @@ def train_best_model(val_ds, ts_code, freq, prediction_length,
     
     # Create and train estimator
     estimator = model_class(
-        freq=freq,
-        prediction_length=prediction_length,
         **all_params
     )
     
