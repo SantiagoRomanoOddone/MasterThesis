@@ -7,7 +7,6 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     process_results,
                                                     train_best_model,
                                                     get_custom_time_features)
-
 import numpy as np
 import pandas as pd
 import random
@@ -23,11 +22,12 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4 
+N_TRIALS = 4
 
 
 
 def get_hiperparameter_space(ts_code):
+
     deepar_space = {
     "num_layers": [1, 2, 3],
     "hidden_size": [16, 32, 64, 128],
@@ -39,9 +39,8 @@ def get_hiperparameter_space(ts_code):
     deepar_fixed = {
     "num_feat_static_cat": 1,
     # "num_feat_dynamic_real": 12,
-    "num_feat_dynamic_real": 0, # using gluonts time features
-    "num_feat_dynamic_real": 0,
-    "num_feat_static_real": 0,
+    "num_feat_dynamic_real": 0,  # using gluonts time features
+    "num_feat_static_real": 0, 
     "cardinality": [len(np.unique(ts_code))],
     "num_parallel_samples": 100,
     'freq': FREQ,
@@ -77,7 +76,8 @@ def deepar_main(features):
                 start_train=START_TRAIN,
                 end_test=END_TEST,
                 freq=FREQ,
-                prediction_length=PREDICTION_LENGTH
+                prediction_length=PREDICTION_LENGTH,
+                # temporal_features=True # Use custom temporal features
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:2]
+    filter = filtered['codigo_barras_sku'].unique()[:10]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
@@ -164,3 +164,5 @@ if __name__ == "__main__":
     print(summary_df['rmse_cant_vta_pred_deepar_mean'].mean(), summary_df['rmse_cant_vta_pred_deepar_mean'].median())
     print(summary_df['rmse_cant_vta_pred_deepar_median'].mean(), summary_df['rmse_cant_vta_pred_deepar_median'].median())
     print(summary_df)
+    
+    # summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_deepar_features_gluonts.csv', index=False)
