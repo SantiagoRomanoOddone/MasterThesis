@@ -23,7 +23,7 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4  # Number of trials for random search
+N_TRIALS = 4 # Number of trials for random search
 
 def get_tft_hiperparameter_space(ts_code):
     """Returns hyperparameter search space and fixed parameters for TFT model"""
@@ -44,6 +44,7 @@ def get_tft_hiperparameter_space(ts_code):
         "static_cardinalities": [len(np.unique(ts_code))],  # FEAT_STATIC_CAT
         "trainer_kwargs": {"max_epochs": 5},
         "time_features": get_custom_time_features(FREQ), 
+        # "time_features": [],
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
     }
@@ -75,7 +76,8 @@ def tft_main(features):
                 start_train=START_TRAIN,
                 end_test=END_TEST,
                 freq=FREQ,
-                prediction_length=PREDICTION_LENGTH
+                prediction_length=PREDICTION_LENGTH,
+                # temporal_features=True
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")
@@ -155,9 +157,15 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:1]
-
+    filter = filtered['codigo_barras_sku'].unique()[:10]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
     final_results = tft_main(filtered)
+
+    validation = validation[validation['codigo_barras_sku'].isin(filter)]
+    test_df = pd.merge(validation, final_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    summary_df = Metrics().create_summary_dataframe(test_df)
+    print(summary_df)
     print(final_results)
+
+    summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_tft_features_mias.csv', index=False)
