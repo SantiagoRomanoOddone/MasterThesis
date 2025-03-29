@@ -1,9 +1,9 @@
 from gluonts.torch import WaveNetEstimator
+from train.hyperparam_search.hyperparam_search import general_random_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    general_random_search,
                                                     process_results,
                                                     train_best_model,
                                                     get_custom_time_features)
@@ -22,31 +22,61 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 1
+N_TRIALS = 4
 
-def get_hiperparameter_space(ts_code):
+def get_hyperparameter_space(ts_code):
     """Hyperparameter space for WaveNetEstimator with temporal features support."""
     wavenet_space = {
-        "num_residual_channels": [16, 24, 32, 48],
-        "num_skip_channels": [16, 32, 48, 64],
-        "num_stacks": [1, 2, 3],
-        "num_bins": [512, 1024, 2048],
-        "embedding_dimension": [5, 10, 20],
-        "lr": [0.001, 0.005, 0.01],
-        "weight_decay": [1e-8, 1e-6, 1e-4],
-        "batch_size": [16, 32, 64],
-        "num_batches_per_epoch": [25, 50, 100],
+        "num_residual_channels": {
+            "type": "categorical",
+            "values": [16, 24, 32, 48]
+        },
+        "num_skip_channels": {
+            "type": "categorical",
+            "values": [16, 32, 48, 64]
+        },
+        "num_stacks": {
+            "type": "categorical",
+            "values": [1, 2, 3]
+        },
+        "num_bins": {
+            "type": "categorical",
+            "values": [512, 1024, 2048]
+        },
+        "embedding_dimension": {
+            "type": "categorical",
+            "values": [5, 10, 20]
+        },
+        "lr": {
+            "type": "float",
+            "low": 0.001,
+            "high": 0.01,
+            "log": True
+        },
+        "weight_decay": {
+            "type": "float",
+            "low": 1e-8,
+            "high": 1e-4,
+            "log": True
+        },
+        "batch_size": {
+            "type": "categorical",
+            "values": [16, 32, 64]
+        },
+        "num_batches_per_epoch": {
+            "type": "categorical",
+            "values": [25, 50, 100]
+        }
     }
     
     wavenet_fixed = {
         "prediction_length": PREDICTION_LENGTH,
         "freq": FREQ,
-        # "num_feat_dynamic_real": 12,  
         "num_feat_static_cat": 1,  # For your store IDs
         "cardinality": [len(np.unique(ts_code))],  # Cardinality of stores
         "use_log_scale_feature": True,
         "trainer_kwargs": {"max_epochs": 5},
-         "time_features": get_custom_time_features(FREQ), 
+        "time_features": get_custom_time_features(FREQ), 
     }
     
     return wavenet_space, wavenet_fixed
@@ -84,7 +114,7 @@ def wavenet_main(features):
         # Train the model
         try:
             # Random Search
-            deepar_space, deepar_fixed = get_hiperparameter_space(ts_code)
+            deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
             best_params= general_random_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=WaveNetEstimator,
@@ -152,7 +182,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:2]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 

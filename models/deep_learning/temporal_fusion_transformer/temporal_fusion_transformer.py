@@ -1,10 +1,10 @@
 import pandas as pd
+from train.hyperparam_search.hyperparam_search import general_random_search, general_bayesian_search
 from gluonts.torch import TemporalFusionTransformerEstimator
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    general_random_search,
                                                     process_results,
                                                     train_best_model,
                                                     get_custom_time_features)
@@ -25,26 +25,54 @@ START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
 N_TRIALS = 4 # Number of trials for random search
 
-def get_tft_hiperparameter_space(ts_code):
-    """Returns hyperparameter search space and fixed parameters for TFT model"""
+def get_tft_hyperparameter_space(ts_code):
+    """Returns hyperparameter search space with types for Bayesian optimization"""
     tft_space = {
-        "hidden_dim": [16, 32, 64, 128],        # Hidden layer size
-        "variable_dim": [8, 16, 32],             # Variable dimension
-        "num_heads": [2, 4, 8],                  # Attention heads
-        "dropout_rate": [0.1, 0.2, 0.3],         # Dropout rate
-        "lr": [0.001, 0.005, 0.01],              # Learning rate
-        "weight_decay": [1e-8, 1e-6, 1e-4],       # Regularization
-        "batch_size": [16, 32, 64],               # Batch size
-        "patience": [5, 10, 20]                   # Early stopping patience
+        "hidden_dim": {
+            "type": "categorical",
+            "values": [16, 32, 64, 128]
+        },
+        "variable_dim": {
+            "type": "categorical",
+            "values": [8, 16, 32]
+        },
+        "num_heads": {
+            "type": "categorical",
+            "values": [2, 4, 8]
+        },
+        "dropout_rate": {
+            "type": "float",
+            "low": 0.1,
+            "high": 0.3
+        },
+        "lr": {
+            "type": "float",
+            "low": 0.001,
+            "high": 0.01,
+            "log": True
+        },
+        "weight_decay": {
+            "type": "float",
+            "low": 1e-8,
+            "high": 1e-4,
+            "log": True
+        },
+        "batch_size": {
+            "type": "categorical",
+            "values": [16, 32, 64]
+        },
+        "patience": {
+            "type": "categorical",
+            "values": [5, 10, 20]
+        }
     }
     
+    # Fixed params remain the same
     tft_fixed = {
         "context_length": PREDICTION_LENGTH,
-        # "dynamic_dims": [12],  # FEAT_DYNAMIC_REAL
-        "static_cardinalities": [len(np.unique(ts_code))],  # FEAT_STATIC_CAT
+        "static_cardinalities": [len(np.unique(ts_code))],
         "trainer_kwargs": {"max_epochs": 5},
-        "time_features": get_custom_time_features(FREQ), 
-        # "time_features": [],
+        "time_features": get_custom_time_features(FREQ),
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
     }
@@ -86,7 +114,8 @@ def tft_main(features):
         # Train the model
         try:
             # Get TFT-specific parameters
-            tft_space, tft_fixed = get_tft_hiperparameter_space(ts_code)
+            tft_space, tft_fixed = get_tft_hyperparameter_space(ts_code)
+            # tft_space, tft_fixed = get_tft_hyperparameter_space_v2(ts_code)
 
             # Random Search
             best_tft_params = general_random_search(
@@ -96,6 +125,13 @@ def tft_main(features):
                 n_trials=N_TRIALS,
                 fixed_params=tft_fixed
             )
+            # best_tft_params = general_bayesian_search(
+            #     train_ds, val_ds, PREDICTION_LENGTH,
+            #     model_class=TemporalFusionTransformerEstimator,
+            #     hyperparameter_space=tft_space,
+            #     n_trials=N_TRIALS,
+            #     fixed_params=tft_fixed
+            # )
 
             # Train final model
             predictor = train_best_model(
@@ -157,7 +193,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:10]
+    filter = filtered['codigo_barras_sku'].unique()[:2]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
     final_results = tft_main(filtered)
@@ -168,4 +204,4 @@ if __name__ == "__main__":
     print(summary_df)
     print(final_results)
 
-    summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_tft_features_mias.csv', index=False)
+    # summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_tft_random.csv', index=False)

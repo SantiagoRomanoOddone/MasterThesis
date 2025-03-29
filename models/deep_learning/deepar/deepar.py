@@ -1,9 +1,9 @@
 from gluonts.torch import DeepAREstimator
+from train.hyperparam_search.hyperparam_search import general_random_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    general_random_search,
                                                     process_results,
                                                     train_best_model,
                                                     get_custom_time_features)
@@ -25,30 +25,52 @@ END_TEST = pd.Timestamp("2024-11-30")
 N_TRIALS = 4
 
 
-
-def get_hiperparameter_space(ts_code):
-
+def get_hyperparameter_space(ts_code):
+    """Hyperparameter space for DeepAREstimator with structured parameter types."""
     deepar_space = {
-    "num_layers": [1, 2, 3],
-    "hidden_size": [16, 32, 64, 128],
-    "lr": [0.001, 0.005, 0.01],
-    "dropout_rate": [0.1, 0.2, 0.3],
-    "batch_size": [16, 32, 64],
-    "weight_decay": [1e-8, 1e-6, 1e-4],
+        "num_layers": {
+            "type": "categorical",
+            "values": [1, 2, 3]
+        },
+        "hidden_size": {
+            "type": "categorical",
+            "values": [16, 32, 64, 128]
+        },
+        "lr": {
+            "type": "float",
+            "low": 0.001,
+            "high": 0.01,
+            "log": True
+        },
+        "dropout_rate": {
+            "type": "float",
+            "low": 0.1,
+            "high": 0.3
+        },
+        "batch_size": {
+            "type": "categorical",
+            "values": [16, 32, 64]
+        },
+        "weight_decay": {
+            "type": "float",
+            "low": 1e-8,
+            "high": 1e-4,
+            "log": True
+        }
     }
+    
     deepar_fixed = {
-    "num_feat_static_cat": 1,
-    # "num_feat_dynamic_real": 12,
-    "num_feat_dynamic_real": 0,  # using gluonts time features
-    "num_feat_static_real": 0, 
-    "cardinality": [len(np.unique(ts_code))],
-    "num_parallel_samples": 100,
-    'freq': FREQ,
-    "prediction_length": PREDICTION_LENGTH,
-    "trainer_kwargs": {"max_epochs": 5},
-    # "time_features": []
-    "time_features": get_custom_time_features(FREQ), 
+        "num_feat_static_cat": 1,
+        "num_feat_dynamic_real": 0,  # Using GluonTS time features
+        "num_feat_static_real": 0,
+        "cardinality": [len(np.unique(ts_code))],
+        "num_parallel_samples": 100,
+        "freq": FREQ,
+        "prediction_length": PREDICTION_LENGTH,
+        "trainer_kwargs": {"max_epochs": 5},
+        "time_features": get_custom_time_features(FREQ)
     }
+    
     return deepar_space, deepar_fixed
 
 # Main function
@@ -86,7 +108,7 @@ def deepar_main(features):
         # Train the model
         try:
             # Random Search
-            deepar_space, deepar_fixed = get_hiperparameter_space(ts_code)
+            deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
             best_params= general_random_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=DeepAREstimator,
@@ -152,7 +174,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:10]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 

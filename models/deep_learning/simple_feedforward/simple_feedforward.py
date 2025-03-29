@@ -1,9 +1,9 @@
 from gluonts.torch import SimpleFeedForwardEstimator
+from train.hyperparam_search.hyperparam_search import general_random_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
                                                     make_predictions,
-                                                    general_random_search,
                                                     process_results,
                                                     train_best_model)
 
@@ -23,24 +23,49 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4 
+N_TRIALS = 4
 
-def get_hiperparameter_space(prediction_length):
-   
+def get_hyperparameter_space(prediction_length):
+    """Hyperparameter space for SimpleFeedForwardEstimator with structured parameter types."""
     sff_space = {
-        "context_length": [5 * prediction_length, 10 * prediction_length, 15 * prediction_length],  # Context window
-        "hidden_dimensions": [[20, 20], [50, 50], [100, 50, 50]],  # Hidden layer sizes
-        "lr": [0.001, 0.005, 0.01],  # Learning rate
-        "weight_decay": [1e-8, 1e-6, 1e-4],  # Weight decay regularization
-        "batch_norm": [True, False],  # Batch normalization
-        "batch_size": [16, 32, 64],  # Batch size
-        "num_batches_per_epoch": [25, 50, 100],  # Batches per epoch
+        "context_length": {
+            "type": "categorical",
+            "values": [5 * prediction_length, 10 * prediction_length, 15 * prediction_length]
+        },
+        "hidden_dimensions": {
+            "type": "categorical",
+            "values": [[20, 20], [50, 50], [100, 50, 50]]
+        },
+        "lr": {
+            "type": "float",
+            "low": 0.001,
+            "high": 0.01,
+            "log": True
+        },
+        "weight_decay": {
+            "type": "float",
+            "low": 1e-8,
+            "high": 1e-4,
+            "log": True
+        },
+        "batch_norm": {
+            "type": "categorical",
+            "values": [True, False]
+        },
+        "batch_size": {
+            "type": "categorical",
+            "values": [16, 32, 64]
+        },
+        "num_batches_per_epoch": {
+            "type": "categorical",
+            "values": [25, 50, 100]
+        }
     }
     
     sff_fixed = {
         "prediction_length": prediction_length,
         "trainer_kwargs": {"max_epochs": 5},
-        # "num_feat_dynamic_real": 12
+        # "num_feat_dynamic_real": 12  # Uncomment if using dynamic features
     }
     
     return sff_space, sff_fixed
@@ -81,7 +106,7 @@ def sff_main(features):
         try:
 
             # Random Search
-            sff_space, sff_fixed = get_hiperparameter_space(PREDICTION_LENGTH)
+            sff_space, sff_fixed = get_hyperparameter_space(PREDICTION_LENGTH)
             best_params= general_random_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=SimpleFeedForwardEstimator,
@@ -147,7 +172,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:2]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 

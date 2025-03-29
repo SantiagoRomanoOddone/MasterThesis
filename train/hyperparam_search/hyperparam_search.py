@@ -9,8 +9,9 @@ from gluonts.evaluation import Evaluator
 from functools import partial                                                   
 
 
+import random
+import numpy as np
 
-# General random search for hyperparameter tuning
 def general_random_search(train_ds, val_ds, prediction_length,
                          model_class, hyperparameter_space, n_trials, fixed_params=None):
     """
@@ -22,16 +23,32 @@ def general_random_search(train_ds, val_ds, prediction_length,
     val_ds : Validation dataset
     prediction_length : Forecast horizon
     model_class : The model estimator class (e.g. DeepAREstimator)
-    hyperparameter_space : Dict of hyperparameter search ranges
+    hyperparameter_space : Dict of hyperparameter search spaces with types
     n_trials : Number of random trials
     fixed_params : Dict of fixed parameters for the model (optional)
     """
     if fixed_params is None:
         fixed_params = {}
     
+    def sample_parameter(param_config):
+        """Helper function to sample a parameter based on its type"""
+        if param_config['type'] == 'categorical':
+            return random.choice(param_config['values'])
+        elif param_config['type'] == 'float':
+            if param_config.get('log', False):
+                log_low = np.log(param_config['low'])
+                log_high = np.log(param_config['high'])
+                return np.exp(random.uniform(log_low, log_high))
+            else:
+                return random.uniform(param_config['low'], param_config['high'])
+        elif param_config['type'] == 'int':
+            return random.randint(param_config['low'], param_config['high'])
+        else:
+            raise ValueError(f"Unknown parameter type: {param_config['type']}")
+    
     # Randomly sample N sets of hyperparameters
     random_hyperparameter_sets = [
-        {key: random.choice(values) for key, values in hyperparameter_space.items()}
+        {key: sample_parameter(values) for key, values in hyperparameter_space.items()}
         for _ in range(n_trials)
     ]
 

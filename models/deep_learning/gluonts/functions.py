@@ -217,70 +217,6 @@ def process_results(tss,
 
     return final_results
 
-
-# General random search for hyperparameter tuning
-def general_random_search(train_ds, val_ds, prediction_length,
-                         model_class, hyperparameter_space, n_trials, fixed_params=None):
-    """
-    General random search for hyperparameter tuning
-    
-    Parameters:
-    -----------
-    train_ds : Training dataset
-    val_ds : Validation dataset
-    prediction_length : Forecast horizon
-    model_class : The model estimator class (e.g. DeepAREstimator)
-    hyperparameter_space : Dict of hyperparameter search ranges
-    n_trials : Number of random trials
-    fixed_params : Dict of fixed parameters for the model (optional)
-    """
-    if fixed_params is None:
-        fixed_params = {}
-    
-    # Randomly sample N sets of hyperparameters
-    random_hyperparameter_sets = [
-        {key: random.choice(values) for key, values in hyperparameter_space.items()}
-        for _ in range(n_trials)
-    ]
-
-    best_rmse = float("inf")
-    best_hyperparams = None
-
-    for hyperparams in random_hyperparameter_sets:
-        print(f"\nTraining with hyperparams: {hyperparams}")
-
-        # Combine fixed and searchable params
-        all_params = {**fixed_params, **hyperparams}
-
-        # Create estimator instance
-        estimator = model_class(
-            **all_params
-        )
-        
-        # Train and predict
-        predictor = estimator.train(training_data=train_ds)
-        tss, forecasts = make_predictions(predictor=predictor, test_ds=val_ds)
-        
-        # Calculate RMSE
-        predictions_mean = np.array([forecast.mean for forecast in forecasts])
-        actuals = np.array([ts.iloc[-prediction_length:].values for ts in tss])
-        actuals = actuals.reshape(predictions_mean.shape)
-        
-        if np.isnan(actuals).any():
-            actuals = np.nan_to_num(actuals, nan=0.0)
-        
-        rmse = np.sqrt(np.mean((predictions_mean - actuals) ** 2))
-        print(f"RMSE achieved: {rmse:.4f}")
-        
-        # Store best model
-        if rmse < best_rmse:
-            best_rmse = rmse
-            best_hyperparams = hyperparams
-
-    print(f"\nBest RMSE: {best_rmse:.4f}")
-    print(f"Best hyperparameters: {best_hyperparams}")
-    return best_hyperparams
-
 def train_best_model(val_ds,
                     model_class, hyperparams, fixed_params=None):
     '''
@@ -316,3 +252,4 @@ def get_custom_time_features(freq: str) -> List[TimeFeature]:
         day_of_year,
         week_of_year  
     ]
+
