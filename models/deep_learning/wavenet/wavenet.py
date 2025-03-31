@@ -27,26 +27,28 @@ N_TRIALS = 4
 def get_hyperparameter_space(ts_code):
     """Hyperparameter space for WaveNetEstimator with temporal features support."""
     wavenet_space = {
+        # --- Architecture ---
         "num_residual_channels": {
             "type": "categorical",
-            "values": [16, 24, 32, 48]
+            "values": [24, 32]
         },
         "num_skip_channels": {
             "type": "categorical",
-            "values": [16, 32, 48, 64]
+            "values": [32, 48]
         },
         "num_stacks": {
             "type": "categorical",
-            "values": [1, 2, 3]
+            "values": [1, 2]
         },
         "num_bins": {
             "type": "categorical",
-            "values": [512, 1024, 2048]
+            "values": [512, 1024]
         },
         "embedding_dimension": {
             "type": "categorical",
-            "values": [5, 10, 20]
+            "values": [5, 10]
         },
+        # --- Optimization ---
         "lr": {
             "type": "float",
             "low": 0.001,
@@ -59,13 +61,14 @@ def get_hyperparameter_space(ts_code):
             "high": 1e-4,
             "log": True
         },
+        # --- Training ---
         "batch_size": {
             "type": "categorical",
-            "values": [16, 32, 64]
+            "values": [32, 64]
         },
         "num_batches_per_epoch": {
             "type": "categorical",
-            "values": [25, 50, 100]
+            "values": [50, 100]
         }
     }
     
@@ -75,7 +78,8 @@ def get_hyperparameter_space(ts_code):
         "num_feat_static_cat": 1,  # For your store IDs
         "cardinality": [len(np.unique(ts_code))],  # Cardinality of stores
         "use_log_scale_feature": True,
-        "trainer_kwargs": {"max_epochs": 5},
+        "trainer_kwargs": {"max_epochs": 5,
+                           "gradient_clip_val": 0.1 },
         "time_features": get_custom_time_features(FREQ), 
     }
     
