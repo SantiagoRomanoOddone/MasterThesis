@@ -28,23 +28,20 @@ N_TRIALS = 4 # Number of trials for random search
 def get_tft_hyperparameter_space(ts_code):
     """Returns hyperparameter search space with types for Bayesian optimization"""
     tft_space = {
+        # --- Architecture ---
         "hidden_dim": {
             "type": "categorical",
-            "values": [16, 32, 64, 128]
+            "values": [32, 64, 128]
         },
         "variable_dim": {
             "type": "categorical",
-            "values": [8, 16, 32]
+            "values": [16, 24, 32]
         },
         "num_heads": {
             "type": "categorical",
-            "values": [2, 4, 8]
+            "values": [4, 8]
         },
-        "dropout_rate": {
-            "type": "float",
-            "low": 0.1,
-            "high": 0.3
-        },
+        # --- Optimization ---
         "lr": {
             "type": "float",
             "low": 0.001,
@@ -57,13 +54,25 @@ def get_tft_hyperparameter_space(ts_code):
             "high": 1e-4,
             "log": True
         },
+        # --- Regularization ---
+        "dropout_rate": {
+        "type": "float",
+        "low": 0.15,
+        "high": 0.35
+        },
+        # --- Training ---
         "batch_size": {
-            "type": "categorical",
-            "values": [16, 32, 64]
+        "type": "categorical",
+        "values": [32, 64]
         },
         "patience": {
             "type": "categorical",
-            "values": [5, 10, 20]
+            "values": [5, 10]
+        },
+        # --- Time Series Context ---
+        "context_length": {
+            "type": "categorical",
+            "values": [PREDICTION_LENGTH, 2*PREDICTION_LENGTH]  
         }
     }
     
@@ -118,20 +127,20 @@ def tft_main(features):
             # tft_space, tft_fixed = get_tft_hyperparameter_space_v2(ts_code)
 
             # Random Search
-            best_tft_params = general_random_search(
-                train_ds, val_ds, PREDICTION_LENGTH,
-                model_class=TemporalFusionTransformerEstimator,
-                hyperparameter_space=tft_space,
-                n_trials=N_TRIALS,
-                fixed_params=tft_fixed
-            )
-            # best_tft_params = general_bayesian_search(
+            # best_tft_params = general_random_search(
             #     train_ds, val_ds, PREDICTION_LENGTH,
             #     model_class=TemporalFusionTransformerEstimator,
             #     hyperparameter_space=tft_space,
             #     n_trials=N_TRIALS,
             #     fixed_params=tft_fixed
             # )
+            best_tft_params = general_bayesian_search(
+                train_ds, val_ds, PREDICTION_LENGTH,
+                model_class=TemporalFusionTransformerEstimator,
+                hyperparameter_space=tft_space,
+                n_trials=N_TRIALS,
+                fixed_params=tft_fixed
+            )
 
             # Train final model
             predictor = train_best_model(

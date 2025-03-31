@@ -1,5 +1,5 @@
 from gluonts.torch import DeepAREstimator
-from train.hyperparam_search.hyperparam_search import general_random_search
+from train.hyperparam_search.hyperparam_search import general_random_search, general_bayesian_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
@@ -13,7 +13,6 @@ import random
 random_seed = 42
 np.random.seed(random_seed)
 random.seed(random_seed)
-np.random.seed(random_seed)
 from metrics.metrics import Metrics
 from lightning.pytorch.callbacks import EarlyStopping
 
@@ -22,34 +21,27 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4
+N_TRIALS = 3
 
 
 def get_hyperparameter_space(ts_code):
     """Hyperparameter space for DeepAREstimator with structured parameter types."""
     deepar_space = {
+        # --- Architecture ---
         "num_layers": {
             "type": "categorical",
             "values": [1, 2, 3]
         },
         "hidden_size": {
             "type": "categorical",
-            "values": [16, 32, 64, 128]
+            "values": [32, 64, 128]
         },
+        # --- Optimization ---
         "lr": {
             "type": "float",
             "low": 0.001,
             "high": 0.01,
             "log": True
-        },
-        "dropout_rate": {
-            "type": "float",
-            "low": 0.1,
-            "high": 0.3
-        },
-        "batch_size": {
-            "type": "categorical",
-            "values": [16, 32, 64]
         },
         "weight_decay": {
             "type": "float",
@@ -57,9 +49,25 @@ def get_hyperparameter_space(ts_code):
             "high": 1e-4,
             "log": True
         },
+        # --- Regularization ---
+        "dropout_rate": {
+            "type": "float",
+            "low": 0.1,
+            "high": 0.5
+        },
+         # --- Training ---
+        "batch_size": {
+            "type": "categorical",
+            "values": [32, 64]
+        },
         "patience": {
             "type": "categorical",
-            "values": [3, 5, 7]  # Early stopping patience
+            "values": [5, 10]
+        },
+        # --- Time Series Context ---
+        "context_length": {
+            "type": "categorical",
+            "values": [PREDICTION_LENGTH, 2*PREDICTION_LENGTH]  
         }
     }
 
@@ -72,10 +80,10 @@ def get_hyperparameter_space(ts_code):
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
         "trainer_kwargs": {
-            "max_epochs": 15,
-           "callbacks": [
-                EarlyStopping(monitor="train_loss", patience=5, mode="min", verbose=True)
-            ]
+            "max_epochs": 10,
+        #    "callbacks": [
+        #         EarlyStopping(monitor="train_loss", patience=5, mode="min", verbose=True)
+        #     ]
         },
         "time_features": get_custom_time_features(FREQ)
     }
@@ -118,7 +126,7 @@ def deepar_main(features):
         try:
             # Random Search
             deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
-            best_params= general_random_search(
+            best_params= general_bayesian_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=DeepAREstimator,
             hyperparameter_space=deepar_space,
@@ -183,7 +191,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:1]
+    filter = filtered['codigo_barras_sku'].unique()[:2]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
@@ -196,4 +204,4 @@ if __name__ == "__main__":
     print(summary_df['rmse_cant_vta_pred_deepar_median'].mean(), summary_df['rmse_cant_vta_pred_deepar_median'].median())
     print(summary_df)
     
-    # summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_deepar_features_gluonts.csv', index=False)
+    summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_deepar_sin_early.csv', index=False)

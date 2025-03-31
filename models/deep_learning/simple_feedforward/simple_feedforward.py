@@ -28,15 +28,13 @@ N_TRIALS = 4
 def get_hyperparameter_space(prediction_length):
     """Hyperparameter space for SimpleFeedForwardEstimator with structured parameter types."""
     sff_space = {
-        "context_length": {
-            "type": "categorical",
-            "values": [5 * prediction_length, 10 * prediction_length, 15 * prediction_length]
-        },
+        # --- Architecture ---
         "hidden_dimensions": {
             "type": "categorical",
-            "values": [[20, 20], [50, 50], [100, 50, 50]]
+            "values": [[20, 20], [40, 40], [100, 50]]
         },
-        "lr": {
+        # --- Optimization ---
+         "lr": {
             "type": "float",
             "low": 0.001,
             "high": 0.01,
@@ -48,18 +46,24 @@ def get_hyperparameter_space(prediction_length):
             "high": 1e-4,
             "log": True
         },
+        # --- Training ---
         "batch_norm": {
             "type": "categorical",
-            "values": [True, False]
+            "values": [True]
         },
         "batch_size": {
             "type": "categorical",
-            "values": [16, 32, 64]
+            "values": [32, 64]
         },
         "num_batches_per_epoch": {
             "type": "categorical",
-            "values": [25, 50, 100]
-        }
+            "values": [50, 100]
+        },
+        # --- Time Series Context ---
+        "context_length": {
+            "type": "categorical",
+            "values": [5 * prediction_length, 10 * prediction_length, 15 * prediction_length]
+        },
     }
     
     sff_fixed = {

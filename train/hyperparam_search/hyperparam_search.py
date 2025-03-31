@@ -1,16 +1,20 @@
 import random
 import pandas as pd
 import numpy as np
-from models.deep_learning.gluonts.functions import make_predictions
+from models.deep_learning.gluonts.functions import make_predictions, set_random_seed
 import optuna
 from optuna.samplers import TPESampler
 import numpy as np
 from gluonts.evaluation import Evaluator
 from functools import partial                                                   
-
-
 import random
 import numpy as np
+
+import random
+random_seed = 42
+np.random.seed(random_seed)
+random.seed(random_seed)
+
 
 def general_random_search(train_ds, val_ds, prediction_length,
                          model_class, hyperparameter_space, n_trials, fixed_params=None):
@@ -27,6 +31,8 @@ def general_random_search(train_ds, val_ds, prediction_length,
     n_trials : Number of random trials
     fixed_params : Dict of fixed parameters for the model (optional)
     """
+    set_random_seed(42)
+
     if fixed_params is None:
         fixed_params = {}
     
@@ -105,6 +111,8 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
     n_trials : Number of optimization trials
     fixed_params : Dict of fixed parameters for the model (optional)
     """
+    set_random_seed(42)
+
     if fixed_params is None:
         fixed_params = {}
     
