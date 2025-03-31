@@ -15,7 +15,7 @@ np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
 from metrics.metrics import Metrics
-
+from lightning.pytorch.callbacks import EarlyStopping
 
 FREQ = "D"
 PREDICTION_LENGTH = 30
@@ -56,9 +56,13 @@ def get_hyperparameter_space(ts_code):
             "low": 1e-8,
             "high": 1e-4,
             "log": True
+        },
+        "patience": {
+            "type": "categorical",
+            "values": [3, 5, 7]  # Early stopping patience
         }
     }
-    
+
     deepar_fixed = {
         "num_feat_static_cat": 1,
         "num_feat_dynamic_real": 0,  # Using GluonTS time features
@@ -67,7 +71,12 @@ def get_hyperparameter_space(ts_code):
         "num_parallel_samples": 100,
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
-        "trainer_kwargs": {"max_epochs": 5},
+        "trainer_kwargs": {
+            "max_epochs": 15,
+           "callbacks": [
+                EarlyStopping(monitor="train_loss", patience=5, mode="min", verbose=True)
+            ]
+        },
         "time_features": get_custom_time_features(FREQ)
     }
     
