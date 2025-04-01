@@ -1,5 +1,6 @@
 from gluonts.torch import WaveNetEstimator
-from train.hyperparam_search.hyperparam_search import hyperparameter_search
+from train.hyperparam_search.hyperparam_search import (hyperparameter_search,
+                                                       save_best_hyperparameters)
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
@@ -132,6 +133,12 @@ def wavenet_main(features):
             type='bayesian',
             fixed_params=deepar_fixed
             )   
+            # save best hyperparameters
+            save_best_hyperparameters(best_params, 
+                                      best_epochs, 
+                                      sku, 
+                                      CLUSTER_NUMBER,
+                                      model="wavenet")
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
