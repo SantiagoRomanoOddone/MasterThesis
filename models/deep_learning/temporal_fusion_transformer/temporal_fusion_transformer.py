@@ -1,5 +1,5 @@
 import pandas as pd
-from train.hyperparam_search.hyperparam_search import general_random_search, general_bayesian_search
+from train.hyperparam_search.hyperparam_search import hyperparameter_search
 from gluonts.torch import TemporalFusionTransformerEstimator
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
@@ -16,6 +16,7 @@ np.random.seed(random_seed)
 random.seed(random_seed)
 np.random.seed(random_seed)
 from metrics.metrics import Metrics
+from lightning.pytorch.callbacks import EarlyStopping
 
 
 FREQ = "D"
@@ -23,7 +24,7 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4 # Number of trials for random search
+N_TRIALS = 10
 
 def get_tft_hyperparameter_space(ts_code):
     """Returns hyperparameter search space with types for Bayesian optimization"""
@@ -65,10 +66,6 @@ def get_tft_hyperparameter_space(ts_code):
         "type": "categorical",
         "values": [32, 64]
         },
-        "patience": {
-            "type": "categorical",
-            "values": [5, 10]
-        },
         # --- Time Series Context ---
         "context_length": {
             "type": "categorical",
@@ -80,7 +77,11 @@ def get_tft_hyperparameter_space(ts_code):
     tft_fixed = {
         "context_length": PREDICTION_LENGTH,
         "static_cardinalities": [len(np.unique(ts_code))],
-        "trainer_kwargs": {"max_epochs": 10},
+        "trainer_kwargs": {"max_epochs": 20,
+                            "callbacks": [
+                            EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
+                            ]
+                           },
         "time_features": get_custom_time_features(FREQ),
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
@@ -124,32 +125,22 @@ def tft_main(features):
         try:
             # Get TFT-specific parameters
             tft_space, tft_fixed = get_tft_hyperparameter_space(ts_code)
-            # tft_space, tft_fixed = get_tft_hyperparameter_space_v2(ts_code)
-
-            # Random Search
-            # best_tft_params = general_random_search(
-            #     train_ds, val_ds, PREDICTION_LENGTH,
-            #     model_class=TemporalFusionTransformerEstimator,
-            #     hyperparameter_space=tft_space,
-            #     n_trials=N_TRIALS,
-            #     fixed_params=tft_fixed
-            # )
-            best_tft_params = general_bayesian_search(
+            best_params, best_epochs = hyperparameter_search(
                 train_ds, val_ds, PREDICTION_LENGTH,
                 model_class=TemporalFusionTransformerEstimator,
                 hyperparameter_space=tft_space,
                 n_trials=N_TRIALS,
-                fixed_params=tft_fixed
+                fixed_params=tft_fixed,
+                type='bayesian'
             )
-
-            # Train final model
+            # Train the final model with the best hyperparameters
             predictor = train_best_model(
                 val_ds=val_ds,  
                 model_class=TemporalFusionTransformerEstimator,
-                hyperparams=best_tft_params,
-                fixed_params=tft_fixed
+                hyperparams=best_params,
+                fixed_params=tft_fixed,
+                best_epochs=best_epochs 
             )
-
         except ValueError as e:
             print(f"Skipping SKU {sku} in training due to error: {e}")
             continue
@@ -202,7 +193,7 @@ if __name__ == "__main__":
     validation = filtered[filtered['fecha_comercial'] >= START_TEST]
     filtered = filtered[filtered['fecha_comercial'] < START_TEST]
 
-    filter = filtered['codigo_barras_sku'].unique()[:2]
+    filter = filtered['codigo_barras_sku'].unique()[:1]
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
     final_results = tft_main(filtered)
