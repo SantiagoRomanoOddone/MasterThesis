@@ -21,7 +21,7 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 3
+N_TRIALS = 10
 
 
 def get_hyperparameter_space(ts_code):
@@ -78,7 +78,7 @@ def get_hyperparameter_space(ts_code):
         "trainer_kwargs": {
             "max_epochs": 20,
            "callbacks": [
-                EarlyStopping(monitor="val_loss", patience=3, mode="min", verbose=True)
+                EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
             ]
         },
         "time_features": get_custom_time_features(FREQ)
