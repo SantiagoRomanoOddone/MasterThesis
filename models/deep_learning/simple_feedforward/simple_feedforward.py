@@ -1,5 +1,6 @@
 from gluonts.torch import SimpleFeedForwardEstimator
-from train.hyperparam_search.hyperparam_search import hyperparameter_search
+from train.hyperparam_search.hyperparam_search import (hyperparameter_search,
+                                                       save_best_hyperparameters)
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
@@ -17,6 +18,7 @@ np.random.seed(random_seed)
 import pandas as pd
 from metrics.metrics import Metrics
 from lightning.pytorch.callbacks import EarlyStopping
+import json 
 
 
 FREQ = "D"
@@ -114,8 +116,7 @@ def sff_main(features):
 
         # Train the model
         try:
-
-            # Random Search
+            # Find the best hyperparameters
             sff_space, sff_fixed = get_hyperparameter_space(PREDICTION_LENGTH)
             best_params, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
@@ -125,6 +126,12 @@ def sff_main(features):
             type='bayesian',
             fixed_params=sff_fixed
             )   
+            # save best hyperparameters
+            save_best_hyperparameters(best_params, 
+                                      best_epochs, 
+                                      sku, 
+                                      CLUSTER_NUMBER,
+                                      model="simple_feedforward")
 
             # Train the final model with the best hyperparameters
             predictor = train_best_model(

@@ -4,13 +4,10 @@ import numpy as np
 from models.deep_learning.gluonts.functions import make_predictions, set_random_seed
 import optuna
 from optuna.samplers import TPESampler
-import numpy as np
 from gluonts.evaluation import Evaluator
 from functools import partial                                                   
-import random
-import numpy as np
 from lightning.pytorch.callbacks import EarlyStopping
-
+import json
 import random
 random_seed = 42
 np.random.seed(random_seed)
@@ -218,3 +215,13 @@ def hyperparameter_search(train_ds, val_ds, prediction_length,
                                       model_class, hyperparameter_space, n_trials, fixed_params)
     else:
         raise ValueError(f"Unknown search type: {type}")
+    
+
+def save_best_hyperparameters(best_params, best_epochs, sku, cluster_number, model):
+    results = {
+        'best_params': best_params,
+        'best_epochs': best_epochs
+    }
+    # Save to JSON file
+    with open(f'results/{model}/best_hyperparameters_sku_{sku}_cluster_{cluster_number}.json', 'w') as f:
+        json.dump(results, f, indent=4)
