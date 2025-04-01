@@ -1,5 +1,5 @@
 from gluonts.torch import SimpleFeedForwardEstimator
-from train.hyperparam_search.hyperparam_search import general_random_search
+from train.hyperparam_search.hyperparam_search import hyperparameter_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
@@ -16,6 +16,7 @@ random.seed(random_seed)
 np.random.seed(random_seed)
 import pandas as pd
 from metrics.metrics import Metrics
+from lightning.pytorch.callbacks import EarlyStopping
 
 
 FREQ = "D"
@@ -23,7 +24,7 @@ PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4
+N_TRIALS = 10
 
 def get_hyperparameter_space(prediction_length):
     """Hyperparameter space for SimpleFeedForwardEstimator with structured parameter types."""
@@ -68,7 +69,12 @@ def get_hyperparameter_space(prediction_length):
     
     sff_fixed = {
         "prediction_length": prediction_length,
-        "trainer_kwargs": {"max_epochs": 5},
+        "trainer_kwargs": {
+            "max_epochs": 20,
+           "callbacks": [
+                EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
+            ]
+        }
         # "num_feat_dynamic_real": 12  # Uncomment if using dynamic features
     }
     
@@ -111,11 +117,12 @@ def sff_main(features):
 
             # Random Search
             sff_space, sff_fixed = get_hyperparameter_space(PREDICTION_LENGTH)
-            best_params= general_random_search(
+            best_params, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=SimpleFeedForwardEstimator,
             hyperparameter_space=sff_space,
             n_trials=N_TRIALS,
+            type='bayesian',
             fixed_params=sff_fixed
             )   
 
@@ -124,7 +131,8 @@ def sff_main(features):
             val_ds=val_ds,  
             model_class=SimpleFeedForwardEstimator,
             hyperparams=best_params,
-            fixed_params=sff_fixed
+            fixed_params=sff_fixed,
+            best_epochs=best_epochs 
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in training due to error: {e}")

@@ -130,8 +130,8 @@ def tft_main(features):
                 model_class=TemporalFusionTransformerEstimator,
                 hyperparameter_space=tft_space,
                 n_trials=N_TRIALS,
+                type='bayesian',
                 fixed_params=tft_fixed,
-                type='bayesian'
             )
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
