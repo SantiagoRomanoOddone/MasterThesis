@@ -78,7 +78,7 @@ def get_hyperparameter_space(ts_code):
         "trainer_kwargs": {
             "max_epochs": 20,
            "callbacks": [
-                EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
+                EarlyStopping(monitor="val_loss", patience=3, mode="min", verbose=True)
             ]
         },
         "time_features": get_custom_time_features(FREQ)
@@ -122,21 +122,21 @@ def deepar_main(features):
         try:
             # Find the best hyperparameters
             deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
-            best_params= hyperparameter_search(
+            best_params, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=DeepAREstimator,
             hyperparameter_space=deepar_space,
             n_trials=N_TRIALS,
             type='bayesian',
             fixed_params=deepar_fixed
-            )   
-
+            )  
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
             model_class=DeepAREstimator,
             hyperparams=best_params,
-            fixed_params=deepar_fixed
+            fixed_params=deepar_fixed,
+            best_epochs=best_epochs 
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in training due to error: {e}")

@@ -8,6 +8,7 @@ import pandas as pd
 import sys
 import numpy as np
 from typing import List
+from lightning.pytorch.callbacks import EarlyStopping
 from gluonts.time_feature import (
     time_features_from_frequency_str,
     TimeFeature,
@@ -218,7 +219,7 @@ def process_results(tss,
     return final_results
 
 def train_best_model(val_ds,
-                    model_class, hyperparams, fixed_params=None):
+                    model_class, hyperparams, fixed_params=None, best_epochs=None):
     '''
     Train the final model with best hyperparameters
     
@@ -228,13 +229,23 @@ def train_best_model(val_ds,
     model_class : The model estimator class (e.g. DeepAREstimator)
     hyperparams : Best hyperparameters from search
     fixed_params : Dict of fixed parameters for the model (optional)
+    best_epochs : Optimal number of epochs determined during hyperparameter search
     '''
     if fixed_params is None:
         fixed_params = {}
-    
+    updated_fixed_params = fixed_params.copy()
+    if best_epochs is not None:
+        updated_fixed_params['trainer_kwargs']['max_epochs'] = best_epochs
     # Combine all parameters
     all_params = {**fixed_params, **hyperparams}
-    
+    # Remove early stopping for final training (since we're using the optimal epochs)
+    if 'callbacks' in updated_fixed_params['trainer_kwargs']:
+        updated_fixed_params['trainer_kwargs']['callbacks'] = [
+            cb for cb in updated_fixed_params['trainer_kwargs']['callbacks'] 
+            if not isinstance(cb, EarlyStopping)
+        ]
+    # Combine all parameters
+    all_params = {**updated_fixed_params, **hyperparams}
     # Create and train estimator
     estimator = model_class(
         **all_params

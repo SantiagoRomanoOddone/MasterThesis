@@ -9,11 +9,14 @@ from gluonts.evaluation import Evaluator
 from functools import partial                                                   
 import random
 import numpy as np
+from lightning.pytorch.callbacks import EarlyStopping
 
 import random
 random_seed = 42
 np.random.seed(random_seed)
 random.seed(random_seed)
+
+
 
 
 def general_random_search(train_ds, val_ds, prediction_length,
@@ -145,10 +148,23 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
         all_params = {**fixed_params, **hyperparams}
         
         try:
+            # Create a callback to track epochs
+            early_stopping = None
+            for callback in all_params.get("trainer_kwargs", {}).get("callbacks", []):
+                if isinstance(callback, EarlyStopping):
+                    early_stopping = callback
+                    break
             # Create and train model
             estimator = model_class(**all_params)
             predictor = estimator.train(training_data=train_ds,
                                         validation_data=val_ds)
+            
+            # Get actual epochs trained
+            if early_stopping and hasattr(early_stopping, 'stopped_epoch') and early_stopping.stopped_epoch is not None:
+                actual_epochs = early_stopping.stopped_epoch + 1  # +1 because it's 0-based
+            else:
+                actual_epochs = all_params.get("trainer_kwargs", {}).get("max_epochs", 20)
+            trial.set_user_attr("actual_epochs", actual_epochs)
             
             # Make predictions and calculate RMSE
             tss, forecasts = make_predictions(predictor=predictor, test_ds=val_ds)
@@ -189,8 +205,7 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
     trial = study.best_trial
     print(f"RMSE: {trial.value:.4f}")
     print(f"Best hyperparameters: {trial.params}")
-    
-    return trial.params
+    return trial.params, trial.user_attrs.get('actual_epochs', fixed_params.get('trainer_kwargs', {}).get('max_epochs', 20))
 
 def hyperparameter_search(train_ds, val_ds, prediction_length,
                          model_class, hyperparameter_space, n_trials, type,fixed_params=None):
