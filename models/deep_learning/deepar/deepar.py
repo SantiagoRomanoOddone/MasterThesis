@@ -1,5 +1,5 @@
 from gluonts.torch import DeepAREstimator
-from train.hyperparam_search.hyperparam_search import general_random_search, general_bayesian_search
+from train.hyperparam_search.hyperparam_search import hyperparameter_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
@@ -60,10 +60,6 @@ def get_hyperparameter_space(ts_code):
             "type": "categorical",
             "values": [32, 64]
         },
-        "patience": {
-            "type": "categorical",
-            "values": [5, 10]
-        },
         # --- Time Series Context ---
         "context_length": {
             "type": "categorical",
@@ -80,10 +76,10 @@ def get_hyperparameter_space(ts_code):
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
         "trainer_kwargs": {
-            "max_epochs": 10,
-        #    "callbacks": [
-        #         EarlyStopping(monitor="train_loss", patience=5, mode="min", verbose=True)
-        #     ]
+            "max_epochs": 20,
+           "callbacks": [
+                EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
+            ]
         },
         "time_features": get_custom_time_features(FREQ)
     }
@@ -124,13 +120,14 @@ def deepar_main(features):
 
         # Train the model
         try:
-            # Random Search
+            # Find the best hyperparameters
             deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
-            best_params= general_bayesian_search(
+            best_params= hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=DeepAREstimator,
             hyperparameter_space=deepar_space,
             n_trials=N_TRIALS,
+            type='bayesian',
             fixed_params=deepar_fixed
             )   
 

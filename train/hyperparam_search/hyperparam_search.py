@@ -73,7 +73,8 @@ def general_random_search(train_ds, val_ds, prediction_length,
         )
         
         # Train and predict
-        predictor = estimator.train(training_data=train_ds)
+        predictor = estimator.train(training_data=train_ds,
+                                    validation_data=val_ds)
         tss, forecasts = make_predictions(predictor=predictor, test_ds=val_ds)
         
         # Calculate RMSE
@@ -146,7 +147,8 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
         try:
             # Create and train model
             estimator = model_class(**all_params)
-            predictor = estimator.train(training_data=train_ds)
+            predictor = estimator.train(training_data=train_ds,
+                                        validation_data=val_ds)
             
             # Make predictions and calculate RMSE
             tss, forecasts = make_predictions(predictor=predictor, test_ds=val_ds)
@@ -189,3 +191,15 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
     print(f"Best hyperparameters: {trial.params}")
     
     return trial.params
+
+def hyperparameter_search(train_ds, val_ds, prediction_length,
+                         model_class, hyperparameter_space, n_trials, type,fixed_params=None):
+
+    if type == 'random':
+        return general_random_search(train_ds, val_ds, prediction_length,
+                                    model_class, hyperparameter_space, n_trials, fixed_params)
+    elif type == 'bayesian':
+        return general_bayesian_search(train_ds, val_ds, prediction_length,
+                                      model_class, hyperparameter_space, n_trials, fixed_params)
+    else:
+        raise ValueError(f"Unknown search type: {type}")
