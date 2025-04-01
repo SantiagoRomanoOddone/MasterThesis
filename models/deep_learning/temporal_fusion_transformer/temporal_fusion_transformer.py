@@ -80,7 +80,7 @@ def get_tft_hyperparameter_space(ts_code):
     tft_fixed = {
         "context_length": PREDICTION_LENGTH,
         "static_cardinalities": [len(np.unique(ts_code))],
-        "trainer_kwargs": {"max_epochs": 5},
+        "trainer_kwargs": {"max_epochs": 10},
         "time_features": get_custom_time_features(FREQ),
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
