@@ -1,5 +1,5 @@
 from gluonts.torch import WaveNetEstimator
-from train.hyperparam_search.hyperparam_search import general_random_search
+from train.hyperparam_search.hyperparam_search import hyperparameter_search
 from models.deep_learning.gluonts.functions import (check_data_requirements, 
                                                     set_random_seed, 
                                                     prepare_dataset, 
@@ -16,13 +16,14 @@ random.seed(random_seed)
 np.random.seed(random_seed)
 import pandas as pd
 from metrics.metrics import Metrics
+from lightning.pytorch.callbacks import EarlyStopping
 
 FREQ = "D"
 PREDICTION_LENGTH = 30
 START_TRAIN = pd.Timestamp("2022-12-01")
 START_TEST = pd.Timestamp("2024-11-01")
 END_TEST = pd.Timestamp("2024-11-30")
-N_TRIALS = 4
+N_TRIALS = 10
 
 def get_hyperparameter_space(ts_code):
     """Hyperparameter space for WaveNetEstimator with temporal features support."""
@@ -78,7 +79,11 @@ def get_hyperparameter_space(ts_code):
         "num_feat_static_cat": 1,  # For your store IDs
         "cardinality": [len(np.unique(ts_code))],  # Cardinality of stores
         "use_log_scale_feature": True,
-        "trainer_kwargs": {"max_epochs": 10,
+        "trainer_kwargs": {
+                            "max_epochs": 20,
+                            "callbacks": [
+                                    EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
+                                ],
                            "gradient_clip_val": 0.1 },
         "time_features": get_custom_time_features(FREQ), 
     }
@@ -119,20 +124,21 @@ def wavenet_main(features):
         try:
             # Random Search
             deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
-            best_params= general_random_search(
+            best_params, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=WaveNetEstimator,
             hyperparameter_space=deepar_space,
             n_trials=N_TRIALS,
+            type='bayesian',
             fixed_params=deepar_fixed
             )   
-
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
             model_class=WaveNetEstimator,
             hyperparams=best_params,
-            fixed_params=deepar_fixed
+            fixed_params=deepar_fixed,
+            best_epochs=best_epochs 
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in training due to error: {e}")
