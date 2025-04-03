@@ -159,9 +159,7 @@ def make_predictions(predictor, test_ds):
     forecast_it, ts_it = make_evaluation_predictions(
         dataset=test_ds,
         predictor=predictor,
-        # num_samples=100,
-        num_samples=50,
-
+        num_samples=100,
     )
 
     print("Obtaining time series conditioning values ...")

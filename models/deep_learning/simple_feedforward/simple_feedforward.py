@@ -7,7 +7,7 @@ from models.deep_learning.gluonts.functions import (check_data_requirements,
                                                     make_predictions,
                                                     process_results,
                                                     train_best_model)
-
+from gluonts.torch.distributions import StudentTOutput
 import pandas as pd
 import numpy as np
 import random
@@ -71,6 +71,7 @@ def get_hyperparameter_space(prediction_length):
     
     sff_fixed = {
         "prediction_length": prediction_length,
+        "distr_output": StudentTOutput(),  # Makes it probabilistic
         "trainer_kwargs": {
             "max_epochs": 20,
            "callbacks": [
