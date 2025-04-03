@@ -76,7 +76,6 @@ def get_tft_hyperparameter_space(ts_code):
     
     # Fixed params remain the same
     tft_fixed = {
-        "context_length": PREDICTION_LENGTH,
         "static_cardinalities": [len(np.unique(ts_code))],
         "trainer_kwargs": {"max_epochs": 20,
                             "callbacks": [

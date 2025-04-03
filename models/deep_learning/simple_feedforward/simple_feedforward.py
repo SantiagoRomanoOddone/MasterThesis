@@ -71,7 +71,6 @@ def get_hyperparameter_space(prediction_length):
     
     sff_fixed = {
         "prediction_length": prediction_length,
-        "distr_output": StudentTOutput(),  # Makes it probabilistic
         "trainer_kwargs": {
             "max_epochs": 20,
            "callbacks": [
@@ -162,7 +161,7 @@ def sff_main(features):
             prediction_length=PREDICTION_LENGTH,
             sku=sku,
             model_name="sff",
-            median=False
+            # median=False
         )
 
         # Append results for the current SKU
