@@ -72,10 +72,7 @@ def get_hyperparameter_space(prediction_length):
     sff_fixed = {
         "prediction_length": prediction_length,
         "trainer_kwargs": {
-            "max_epochs": 20,
-           "callbacks": [
-                EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
-            ]
+            "max_epochs": 20
         }        
     }
     return sff_space, sff_fixed
@@ -107,7 +104,7 @@ def sff_main(features, cluster_number):
                 end_test=END_TEST,
                 freq=FREQ,
                 prediction_length=PREDICTION_LENGTH,
-                temporal_features=True # Use temporal features
+                # temporal_features=True # Use temporal features
             )
         except ValueError as e:
             print(f"Skipping SKU {sku} in prepare dataset due to error: {e}")

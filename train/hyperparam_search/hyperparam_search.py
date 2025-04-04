@@ -96,7 +96,6 @@ def general_random_search(train_ds, val_ds, prediction_length,
     print(f"\nBest RMSE: {best_rmse:.4f}")
     print(f"Best hyperparameters: {best_hyperparams}")
     return best_hyperparams
-
 def general_bayesian_search(train_ds, val_ds, prediction_length,
                           model_class, hyperparameter_space, n_trials, fixed_params=None):
     """
@@ -144,23 +143,41 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
         # Combine fixed and searchable params
         all_params = {**fixed_params, **hyperparams}
         
+        # Create fresh EarlyStopping for each trial
+        early_stopping = EarlyStopping(
+            monitor="val_loss",
+            patience=5,
+            mode="min",
+            verbose=True
+        )
+        
+        # Ensure trainer_kwargs exists and add our callback
+        if "trainer_kwargs" not in all_params:
+            all_params["trainer_kwargs"] = {}
+        if "callbacks" not in all_params["trainer_kwargs"]:
+            all_params["trainer_kwargs"]["callbacks"] = []
+        
+        # Clear any existing EarlyStopping callbacks
+        all_params["trainer_kwargs"]["callbacks"] = [
+            cb for cb in all_params["trainer_kwargs"]["callbacks"] 
+            if not isinstance(cb, EarlyStopping)
+        ]
+        all_params["trainer_kwargs"]["callbacks"].append(early_stopping)
+        
         try:
-            # Create a callback to track epochs
-            early_stopping = None
-            for callback in all_params.get("trainer_kwargs", {}).get("callbacks", []):
-                if isinstance(callback, EarlyStopping):
-                    early_stopping = callback
-                    break
             # Create and train model
             estimator = model_class(**all_params)
-            predictor = estimator.train(training_data=train_ds,
-                                        validation_data=val_ds)
+            predictor = estimator.train(
+                training_data=train_ds,
+                validation_data=val_ds
+            )
             
             # Get actual epochs trained
-            if early_stopping and hasattr(early_stopping, 'stopped_epoch') and early_stopping.stopped_epoch is not None:
-                actual_epochs = early_stopping.stopped_epoch + 1  # +1 because it's 0-based
-            else:
-                actual_epochs = all_params.get("trainer_kwargs", {}).get("max_epochs", 20)
+            actual_epochs = (
+                early_stopping.stopped_epoch + 1 
+                if early_stopping.stopped_epoch is not None
+                else all_params.get("trainer_kwargs", {}).get("max_epochs", 20)
+            )
             trial.set_user_attr("actual_epochs", actual_epochs)
             
             # Make predictions and calculate RMSE
@@ -178,10 +195,10 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
             
         except Exception as e:
             print(f"Error with params {hyperparams}: {str(e)}")
-            return float('inf')  # Return worst possible score if error occurs
+            return float('inf')
     
     # Create study with TPE sampler
-    sampler = TPESampler(seed=42)  # For reproducibility
+    sampler = TPESampler(seed=42)
     study = optuna.create_study(direction='minimize', sampler=sampler)
     
     # Run optimization
