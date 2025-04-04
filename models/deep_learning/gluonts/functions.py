@@ -153,6 +153,7 @@ def create_list_dataset(data, ts_code, start_date, freq, temporal_features=None)
             for target, fsc in zip(data.T, ts_code)
         ], freq=freq)
 
+
 # Make predictions
 def make_predictions(predictor, test_ds):
 

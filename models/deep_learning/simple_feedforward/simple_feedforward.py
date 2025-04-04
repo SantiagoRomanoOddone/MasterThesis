@@ -76,10 +76,8 @@ def get_hyperparameter_space(prediction_length):
            "callbacks": [
                 EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
             ]
-        }
-        # "num_feat_dynamic_real": 12  # Uncomment if using dynamic features
+        }        
     }
-    
     return sff_space, sff_fixed
 
 # Main function
@@ -97,6 +95,7 @@ def sff_main(features, cluster_number):
 
     all_final_results = []
     for sku in valid_skus:
+        print(f"-------------------------------------------------------------------------------------")
         print(f"Processing SKU: {sku}")
         filtered = features[(features["codigo_barras_sku"] == sku)].copy()
 
