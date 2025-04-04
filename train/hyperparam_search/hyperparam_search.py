@@ -96,6 +96,7 @@ def general_random_search(train_ds, val_ds, prediction_length,
     print(f"\nBest RMSE: {best_rmse:.4f}")
     print(f"Best hyperparameters: {best_hyperparams}")
     return best_hyperparams
+
 def general_bayesian_search(train_ds, val_ds, prediction_length,
                           model_class, hyperparameter_space, n_trials, fixed_params=None):
     """
@@ -146,7 +147,7 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
         # Create fresh EarlyStopping for each trial
         early_stopping = EarlyStopping(
             monitor="val_loss",
-            patience=5,
+            patience=10,
             mode="min",
             verbose=True
         )
@@ -219,7 +220,7 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
     trial = study.best_trial
     print(f"RMSE: {trial.value:.4f}")
     print(f"Best hyperparameters: {trial.params}")
-    return trial.params, trial.user_attrs.get('actual_epochs', fixed_params.get('trainer_kwargs', {}).get('max_epochs', 20))
+    return trial.params, trial.user_attrs.get('actual_epochs', fixed_params.get('trainer_kwargs', {}).get('max_epochs', 30))
 
 def hyperparameter_search(train_ds, val_ds, prediction_length,
                          model_class, hyperparameter_space, n_trials, type,fixed_params=None):
