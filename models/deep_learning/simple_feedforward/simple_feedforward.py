@@ -83,7 +83,7 @@ def get_hyperparameter_space(prediction_length):
     return sff_space, sff_fixed
 
 # Main function
-def sff_main(features):
+def sff_main(features, cluster_number):
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
@@ -130,7 +130,7 @@ def sff_main(features):
             save_best_hyperparameters(best_params, 
                                       best_epochs, 
                                       sku, 
-                                      CLUSTER_NUMBER,
+                                      cluster_number,
                                       model="simple_feedforward")
 
             # Train the final model with the best hyperparameters
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     filtered = filtered[filtered['codigo_barras_sku'].isin(filter)]
 
 
-    final_results = sff_main(filtered)
+    final_results = sff_main(filtered, CLUSTER_NUMBER)
     
     validation = validation[validation['codigo_barras_sku'].isin(filter)]
     test_df = pd.merge(validation, final_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')

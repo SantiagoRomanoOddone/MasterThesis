@@ -89,7 +89,7 @@ def get_tft_hyperparameter_space(ts_code):
     return tft_space, tft_fixed
 
 # Main function
-def tft_main(features):
+def tft_main(features, cluster_number):
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
@@ -137,7 +137,7 @@ def tft_main(features):
             save_best_hyperparameters(best_params, 
                                       best_epochs, 
                                       sku, 
-                                      CLUSTER_NUMBER,
+                                      cluster_number,
                                       model="temporal_fusion_transformer")
             # Train the final model with the best hyperparameters
             predictor = train_best_model(

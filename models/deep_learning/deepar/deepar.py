@@ -88,7 +88,7 @@ def get_hyperparameter_space(ts_code):
     return deepar_space, deepar_fixed
 
 # Main function
-def deepar_main(features):
+def deepar_main(features, cluster_number):
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
@@ -135,7 +135,7 @@ def deepar_main(features):
             save_best_hyperparameters(best_params, 
                                       best_epochs, 
                                       sku, 
-                                      CLUSTER_NUMBER,
+                                      cluster_number,
                                       model="deepar")
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
@@ -165,7 +165,7 @@ def deepar_main(features):
             prediction_length=PREDICTION_LENGTH,
             sku=sku,
             model_name="deepar",
-            median=True
+            # median=True
         )
         # Append results for the current SKU
         all_final_results.append(final_results)

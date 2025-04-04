@@ -160,6 +160,7 @@ def make_predictions(predictor, test_ds):
         dataset=test_ds,
         predictor=predictor,
         num_samples=100,
+
     )
 
     print("Obtaining time series conditioning values ...")
@@ -178,7 +179,7 @@ def process_results(tss,
                     prediction_length, 
                     sku,
                     model_name,
-                    median=False):
+                    ):
     all_results = []
 
     for i, (tss_series, forecast) in enumerate(zip(tss, forecasts)):
@@ -186,24 +187,16 @@ def process_results(tss,
         predictions_mean = forecast.mean
         pdv_codigo_name = df_input.columns[i + 1]
 
-        if median: 
-            predictions_median = forecast.median
-            results = pd.DataFrame({
-                'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
-                'cant_vta': latest_tss,
-                f'cant_vta_pred_{model_name}_mean': predictions_mean,
-                f'cant_vta_pred_{model_name}_median': predictions_median,
-                'pdv_codigo': pdv_codigo_name,
-                'codigo_barras_sku': sku
-            })
-        else:
-            results = pd.DataFrame({
-                'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
-                'cant_vta': latest_tss,
-                f'cant_vta_pred_{model_name}_mean': predictions_mean,
-                'pdv_codigo': pdv_codigo_name,
-                'codigo_barras_sku': sku
-            })
+        
+        predictions_median = forecast.median
+        results = pd.DataFrame({
+            'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
+            'cant_vta': latest_tss,
+            f'cant_vta_pred_{model_name}_mean': predictions_mean,
+            f'cant_vta_pred_{model_name}_median': predictions_median,
+            'pdv_codigo': pdv_codigo_name,
+            'codigo_barras_sku': sku
+        })
         all_results.append(results)
 
     final_results = pd.concat(all_results, ignore_index=True)
