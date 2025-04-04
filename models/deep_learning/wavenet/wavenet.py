@@ -82,9 +82,6 @@ def get_hyperparameter_space(ts_code):
         "use_log_scale_feature": True,
         "trainer_kwargs": {
                             "max_epochs": 20,
-                            "callbacks": [
-                                    EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
-                                ],
                            "gradient_clip_val": 0.1 },
         "time_features": get_custom_time_features(FREQ), 
     }

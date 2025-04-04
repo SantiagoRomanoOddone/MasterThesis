@@ -77,10 +77,7 @@ def get_tft_hyperparameter_space(ts_code):
     # Fixed params remain the same
     tft_fixed = {
         "static_cardinalities": [len(np.unique(ts_code))],
-        "trainer_kwargs": {"max_epochs": 20,
-                            "callbacks": [
-                            EarlyStopping(monitor="val_loss", patience=5, mode="min", verbose=True)
-                            ]
+        "trainer_kwargs": {"max_epochs": 20
                            },
         "time_features": get_custom_time_features(FREQ),
         "freq": FREQ,
