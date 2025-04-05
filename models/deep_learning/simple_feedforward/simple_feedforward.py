@@ -114,7 +114,7 @@ def sff_main(features, cluster_number):
         try:
             # Find the best hyperparameters
             sff_space, sff_fixed = get_hyperparameter_space(PREDICTION_LENGTH)
-            best_params, best_epochs = hyperparameter_search(
+            best_trial, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=SimpleFeedForwardEstimator,
             hyperparameter_space=sff_space,
@@ -123,17 +123,19 @@ def sff_main(features, cluster_number):
             fixed_params=sff_fixed
             )   
             # save best hyperparameters
-            save_best_hyperparameters(best_params, 
-                                      best_epochs, 
-                                      sku, 
-                                      cluster_number,
-                                      model="simple_feedforward")
+            save_best_hyperparameters(
+                        best_trial,
+                        best_epochs,
+                        sku,
+                        cluster_number,
+                        model="simple_feedforward")
+
 
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
             model_class=SimpleFeedForwardEstimator,
-            hyperparams=best_params,
+            hyperparams=best_trial.params,
             fixed_params=sff_fixed,
             best_epochs=best_epochs 
             )
