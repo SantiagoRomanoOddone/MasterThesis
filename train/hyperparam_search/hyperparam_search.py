@@ -149,7 +149,8 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
             monitor="val_loss",  # Tracks the FINAL epoch-aggregated value
             patience=10,
             mode="min",
-            verbose=True
+            verbose=True,
+            min_delta=0.001,  # Minimum change to qualify as an improvement
         )
         
         # Ensure trainer_kwargs exists and add our callback
@@ -176,11 +177,10 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
             # Get actual epochs trained
             if early_stopping.stopped_epoch != 0:
                 # Case 1: Early stopping triggered
-                actual_epochs = early_stopping.stopped_epoch + 1  # +1 because epochs are 0-indexed
+                actual_epochs = early_stopping.stopped_epoch - 10  # Because the best epoch is 10 epochs before the stopping point
             else:
                 # Case 2: Training completed fully
                 actual_epochs = all_params.get("trainer_kwargs", {}).get("max_epochs")
-                
             trial.set_user_attr("actual_epochs", actual_epochs)
             
             # Make predictions and calculate RMSE
