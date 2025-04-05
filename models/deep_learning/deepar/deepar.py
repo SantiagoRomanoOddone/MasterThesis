@@ -77,7 +77,7 @@ def get_hyperparameter_space(ts_code):
         "freq": FREQ,
         "prediction_length": PREDICTION_LENGTH,
         "trainer_kwargs": {
-            "max_epochs": 30
+            "max_epochs": 40
         },
         "time_features": get_custom_time_features(FREQ)
     }

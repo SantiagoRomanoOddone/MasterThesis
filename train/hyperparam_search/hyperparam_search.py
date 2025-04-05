@@ -222,7 +222,7 @@ def general_bayesian_search(train_ds, val_ds, prediction_length,
     trial = study.best_trial
     print(f"RMSE: {trial.value:.4f}")
     print(f"Best hyperparameters: {trial.params}")
-    return trial.params, trial.user_attrs.get('actual_epochs', fixed_params.get('trainer_kwargs', {}).get('max_epochs', 30))
+    return trial.params, trial.user_attrs.get('actual_epochs', fixed_params.get('trainer_kwargs', {}).get('max_epochs', 40))
 
 def hyperparameter_search(train_ds, val_ds, prediction_length,
                          model_class, hyperparameter_space, n_trials, type,fixed_params=None):

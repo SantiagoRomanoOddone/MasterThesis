@@ -81,7 +81,7 @@ def get_hyperparameter_space(ts_code):
         "cardinality": [len(np.unique(ts_code))],  # Cardinality of stores
         "use_log_scale_feature": True,
         "trainer_kwargs": {
-                            "max_epochs": 30,
+                            "max_epochs": 40,
                            "gradient_clip_val": 0.1 },
         "time_features": get_custom_time_features(FREQ), 
     }

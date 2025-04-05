@@ -72,7 +72,7 @@ def get_hyperparameter_space(prediction_length):
     sff_fixed = {
         "prediction_length": prediction_length,
         "trainer_kwargs": {
-            "max_epochs": 30
+            "max_epochs": 40
         }        
     }
     return sff_space, sff_fixed
