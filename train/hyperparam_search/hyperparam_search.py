@@ -135,7 +135,6 @@ def prepare_callbacks(trainer_kwargs):
         patience=10,
         mode="min",
         verbose=True,
-        min_delta=0.001,
     )
     loss_logger = LossHistoryLogger()
 
