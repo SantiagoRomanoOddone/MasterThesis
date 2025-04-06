@@ -99,6 +99,7 @@ def deepar_main(features, cluster_number):
 
     all_final_results = []
     for sku in valid_skus:
+        print(f"-------------------------------------------------------------------------------------")
         print(f"Processing SKU: {sku}")
         filtered = features[(features["codigo_barras_sku"] == sku)].copy()
 
