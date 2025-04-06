@@ -151,7 +151,8 @@ def prepare_callbacks(trainer_kwargs):
 
 def get_actual_epochs(early_stopping, max_epochs):
     if early_stopping.stopped_epoch != 0:
-        return early_stopping.stopped_epoch - 9 # 10 epochs before the stopping point
+        # return early_stopping.stopped_epoch - 9 # 10 epochs before the stopping point
+        return early_stopping.stopped_epoch 
     return max_epochs
 
 

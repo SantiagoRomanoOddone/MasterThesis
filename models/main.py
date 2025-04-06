@@ -26,7 +26,7 @@ if __name__ == '__main__':
     np.random.seed(42) 
 
     # Constants
-    CLUSTER_NUMBER = 0
+    CLUSTER_NUMBER = 1
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
@@ -45,9 +45,13 @@ if __name__ == '__main__':
     # random_skus = np.random.choice(features['codigo_barras_sku'].unique(), size=10, replace=False)
     # features = features[features['codigo_barras_sku'].isin(random_skus)]
     
-    # Filter BY number of stores associated with the SKU
+    # # Filter BY number of stores associated with the SKU
     filter = features.groupby('codigo_barras_sku').agg({'pdv_codigo': 'nunique'}).reset_index().sort_values('pdv_codigo', ascending=False).head(10)['codigo_barras_sku'].tolist()
     features = features[features['codigo_barras_sku'].isin(filter)]
+
+    # # TEST
+    # filter = 7891991000727
+    # features = features[features['codigo_barras_sku'].isin([filter])]
 
     train_df, test_df = fixed_split(features)
 

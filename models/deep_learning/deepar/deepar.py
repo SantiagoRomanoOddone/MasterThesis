@@ -120,7 +120,7 @@ def deepar_main(features, cluster_number):
         try:
             # Find the best hyperparameters
             deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
-            best_params, best_epochs = hyperparameter_search(
+            best_trial, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=DeepAREstimator,
             hyperparameter_space=deepar_space,
@@ -129,7 +129,7 @@ def deepar_main(features, cluster_number):
             fixed_params=deepar_fixed
             )  
             # save best hyperparameters
-            save_best_hyperparameters(best_params, 
+            save_best_hyperparameters(best_trial,
                                       best_epochs, 
                                       sku, 
                                       cluster_number,
@@ -138,7 +138,7 @@ def deepar_main(features, cluster_number):
             predictor = train_best_model(
             val_ds=val_ds,  
             model_class=DeepAREstimator,
-            hyperparams=best_params,
+            hyperparams=best_trial.params,
             fixed_params=deepar_fixed,
             best_epochs=best_epochs 
             )
