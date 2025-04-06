@@ -239,6 +239,7 @@ def save_best_hyperparameters(best_trial, best_epochs, sku, cluster_number, mode
     
     results = {
         'best_params': best_trial.params,
+        'best_trial': best_trial.number,
         'best_epochs': best_epochs,
         'train_losses': best_trial.user_attrs.get('train_losses'),
         'val_losses': best_trial.user_attrs.get('val_losses')
