@@ -101,6 +101,7 @@ def tft_main(features, cluster_number):
     all_final_results = []
     # valid_skus = valid_skus[40:50]
     for sku in valid_skus:
+        print(f"-------------------------------------------------------------------------------------")
         print(f"Processing SKU: {sku}")
         filtered = features[(features["codigo_barras_sku"] == sku)].copy()
 
@@ -122,7 +123,7 @@ def tft_main(features, cluster_number):
         try:
             # Get TFT-specific parameters
             tft_space, tft_fixed = get_tft_hyperparameter_space(ts_code)
-            best_params, best_epochs = hyperparameter_search(
+            best_trial, best_epochs = hyperparameter_search(
                 train_ds, val_ds, PREDICTION_LENGTH,
                 model_class=TemporalFusionTransformerEstimator,
                 hyperparameter_space=tft_space,
@@ -131,7 +132,7 @@ def tft_main(features, cluster_number):
                 fixed_params=tft_fixed,
             )
             # save best hyperparameters
-            save_best_hyperparameters(best_params, 
+            save_best_hyperparameters(best_trial,
                                       best_epochs, 
                                       sku, 
                                       cluster_number,
@@ -140,7 +141,7 @@ def tft_main(features, cluster_number):
             predictor = train_best_model(
                 val_ds=val_ds,  
                 model_class=TemporalFusionTransformerEstimator,
-                hyperparams=best_params,
+                hyperparams=best_trial.params,
                 fixed_params=tft_fixed,
                 best_epochs=best_epochs 
             )

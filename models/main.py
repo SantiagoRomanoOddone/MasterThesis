@@ -5,7 +5,7 @@ from models.mean_sale.mean_sale_main import mean_sale
 # from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
 
-# from models.deep_learning.deepar.deepar import deepar_main
+from models.deep_learning.deepar.deepar import deepar_main
 # from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
 
 # testing
@@ -26,13 +26,13 @@ if __name__ == '__main__':
     np.random.seed(42) 
 
     # Constants
-    CLUSTER_NUMBER = 1
+    CLUSTER_NUMBER = 2
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
     START_TEST = pd.Timestamp("2024-11-01")
     END_TEST = pd.Timestamp("2024-11-30")
-    MODEL = 'sff'
+    MODEL = 'deepar'
 
     DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
 
@@ -59,12 +59,12 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # mean_sale_results = mean_sale(features)
-    # deepar_results = deepar_main(features,CLUSTER_NUMBER)
+    deepar_results = deepar_main(features,CLUSTER_NUMBER)
     # tft_results = tft_main(features,CLUSTER_NUMBER)
     # d_linear_results = dlinear_main(features)
     # deep_npts_results = deepnpts_main(features)
     # patch_tst_results = patchtst_main(features)
-    simple_feedforward_results = sff_main(features,CLUSTER_NUMBER)
+    # simple_feedforward_results = sff_main(features,CLUSTER_NUMBER)
     # wavenet_results = wavenet_main(features)
 
     
@@ -89,12 +89,12 @@ if __name__ == '__main__':
     # test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    # test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, d_linear_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, deep_npts_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, patch_tst_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
-    test_df = pd.merge(test_df, simple_feedforward_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    # test_df = pd.merge(test_df, simple_feedforward_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
 
 
