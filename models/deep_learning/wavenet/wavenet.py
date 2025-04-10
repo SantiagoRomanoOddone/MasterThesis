@@ -88,7 +88,7 @@ def get_hyperparameter_space(ts_code):
     
     return wavenet_space, wavenet_fixed
 # Main function
-def wavenet_main(features):
+def wavenet_main(features, cluster_number):
     set_random_seed(42)
 
     unique_skus = features['codigo_barras_sku'].unique()
@@ -102,6 +102,7 @@ def wavenet_main(features):
 
     all_final_results = []
     for sku in valid_skus:
+        print(f"-------------------------------------------------------------------------------------")
         print(f"Processing SKU: {sku}")
         filtered = features[(features["codigo_barras_sku"] == sku)].copy()
         
@@ -122,7 +123,7 @@ def wavenet_main(features):
         try:
             # Random Search
             deepar_space, deepar_fixed = get_hyperparameter_space(ts_code)
-            best_params, best_epochs = hyperparameter_search(
+            best_trial, best_epochs = hyperparameter_search(
             train_ds, val_ds, PREDICTION_LENGTH,
             model_class=WaveNetEstimator,
             hyperparameter_space=deepar_space,
@@ -131,16 +132,16 @@ def wavenet_main(features):
             fixed_params=deepar_fixed
             )   
             # save best hyperparameters
-            save_best_hyperparameters(best_params, 
+            save_best_hyperparameters(best_trial,
                                       best_epochs, 
                                       sku, 
-                                      CLUSTER_NUMBER,
+                                      cluster_number,
                                       model="wavenet")
             # Train the final model with the best hyperparameters
             predictor = train_best_model(
             val_ds=val_ds,  
             model_class=WaveNetEstimator,
-            hyperparams=best_params,
+            hyperparams=best_trial.params,
             fixed_params=deepar_fixed,
             best_epochs=best_epochs 
             )
