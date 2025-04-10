@@ -188,8 +188,10 @@ def process_results(tss,
         predictions_mean = forecast.mean
         pdv_codigo_name = df_input.columns[i + 1]
 
-        
-        predictions_median = forecast.median
+        if forecast.median is None:
+            predictions_median = np.nan
+        else:
+            predictions_median = forecast.median
         results = pd.DataFrame({
             'date': pd.date_range(start=start_test, periods=prediction_length, freq=freq),
             'cant_vta': latest_tss,

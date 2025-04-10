@@ -90,12 +90,12 @@ if __name__ == '__main__':
     # test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
-    test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    # test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, d_linear_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, deep_npts_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, patch_tst_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, simple_feedforward_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
-    # test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
 
 
     summary_df = Metrics().create_summary_dataframe(test_df)

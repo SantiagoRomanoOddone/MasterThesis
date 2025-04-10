@@ -164,8 +164,7 @@ def wavenet_main(features, cluster_number):
             freq=FREQ,
             prediction_length=PREDICTION_LENGTH,
             sku=sku,
-            model_name="wavenet",
-            median=False
+            model_name="wavenet"
         )
 
         # Append results for the current SKU
