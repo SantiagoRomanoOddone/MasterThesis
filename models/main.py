@@ -26,7 +26,7 @@ if __name__ == '__main__':
     np.random.seed(42) 
 
     # Constants
-    CLUSTER_NUMBER = 0
+    CLUSTER_NUMBER = 2
     FREQ = "D"
     PREDICTION_LENGTH = 30
     START_TRAIN = pd.Timestamp("2022-12-01")
