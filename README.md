@@ -43,13 +43,12 @@ Demand forecasting is not just a technical challenge—it’s a **mission-critic
 
 This project demonstrates how advanced AI can deliver real-world value—and how **academic innovation** can inform better business strategy.
 
-## 📈 Key Outcomes
+## 📈 Key Outcomes Achieved
 
-- ✅ **High-accuracy forecasting models** that outperform traditional baselines across multiple scenarios.
-- ✅ **Scalable deep learning implementations** capable of forecasting thousands of product-store combinations efficiently.
-- ✅ **Insights into demand drivers**, including how features like promotions and holidays impact forecast precision.
-- ✅ A **generalizable forecasting framework** that can be adapted to other industries and use cases requiring complex multi-series modeling.
-
+- 🚀 **Deep learning models outperformed state-of-the-art baselines**, including widely used algorithms like XGBoost and CatBoost, delivering superior accuracy across diverse forecasting scenarios.
+- ⚙️ **Scalable and robust implementations** successfully predicted demand for thousands of product-store combinations simultaneously.
+- 🔍 **Extracted actionable insights** on key demand drivers (e.g., promotions, holidays), helping to explain when and why deep learning models excel.
+- 🧠 Developed a **powerful forecasting framework** using GluonTS, easily adaptable to other domains facing complex multi-series prediction challenges.
 
 ---
 
