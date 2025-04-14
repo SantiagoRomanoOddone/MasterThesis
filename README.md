@@ -1,5 +1,7 @@
 # 📊 Master Thesis: Forecasting Demand Across Products and Stores
 
+![Forecasting Banner](image/image1.png)
+
 ## 🧠 Overview
 
 This project is the **final thesis for my Master’s in Management and Analytics**, combining academic research with applied machine learning to tackle a highly relevant problem in the retail industry: **demand forecasting at scale**.
