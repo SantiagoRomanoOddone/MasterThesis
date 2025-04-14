@@ -6,9 +6,12 @@ In the dynamic world of retail, accurately forecasting demand is pivotal. It ens
 
 ## 🚀 Project Objectives
 
-- **Comprehensive Forecasting**: Develop models capable of predicting demand across thousands of product-store pairs, each exhibiting unique patterns and behaviors.
-- **Model Evaluation**: Assess the performance of various forecasting models, from traditional statistical methods to advanced deep learning architectures.
-- **Pattern Analysis**: Investigate the factors that contribute to the predictability or volatility of different time series, aiming to understand and mitigate forecasting challenges.
+- **Explore and build powerful deep learning models** to generate highly accurate and robust demand forecasts.
+- **Investigate** how modern architectures can learn from vast and diverse time series data, revealing what makes forecasting easier—or harder—in the retail context.
+- **Implement and evaluate** advanced models across thousands of product-store combinations, identifying patterns, uncovering challenges, and benchmarking performance.
+- **Leverage probabilistic forecasting** to capture uncertainty and improve decision-making in real-world retail operations.
+
+This is both a technical deep dive and a practical implementation, focused on delivering real business value through smarter forecasting.
 
 ## 🧰 Methodology
 
