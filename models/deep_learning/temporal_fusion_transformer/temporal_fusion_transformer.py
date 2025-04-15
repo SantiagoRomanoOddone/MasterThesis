@@ -70,7 +70,7 @@ def get_tft_hyperparameter_space(ts_code):
         # --- Time Series Context ---
         "context_length": {
             "type": "categorical",
-            "values": [PREDICTION_LENGTH, 2*PREDICTION_LENGTH]  
+            "values": [2*PREDICTION_LENGTH, 3*PREDICTION_LENGTH, 4*PREDICTION_LENGTH, 6*PREDICTION_LENGTH]  
         }
     }
     
