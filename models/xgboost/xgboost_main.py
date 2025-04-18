@@ -33,7 +33,7 @@ def xgboost(cluster_data):
         train_df = train_df[train_df['fecha_comercial'] < val_start]
 
         # Hyperparameter tuning
-        best_trial = xgboost_bayesian_search(train_df, val_df, n_trials=30)
+        best_trial = xgboost_bayesian_search(train_df, val_df, n_trials=10)
         
         # Train final model with best params
         model = XGBoostRegressor(**best_trial.params)
@@ -91,7 +91,7 @@ def xgboost_by_product(cluster_data):
 if __name__ == '__main__':
    
     # Constants
-    CLUSTER_NUMBER = 2
+    CLUSTER_NUMBER = 0
     FREQ = "D"
     PREDICTION_LENGTH = 30
     MODEL = 'xgboost'
