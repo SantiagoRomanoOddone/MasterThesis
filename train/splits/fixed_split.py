@@ -7,7 +7,7 @@ def fixed_split(data: pd.DataFrame, start_test: pd.Timestamp= None, end_test: pd
         end_test = pd.Timestamp("2024-11-30")
     data = data[data['fecha_comercial'] <= end_test]
     
-    validation = data[data['fecha_comercial'] >= start_test]
+    test = data[data['fecha_comercial'] >= start_test]
     train = data[data['fecha_comercial'] < start_test]
 
-    return train, validation
+    return train, test
