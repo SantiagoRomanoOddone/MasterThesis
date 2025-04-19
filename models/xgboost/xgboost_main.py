@@ -91,7 +91,7 @@ def xgboost_by_product(cluster_data):
 if __name__ == '__main__':
    
     # Constants
-    CLUSTER_NUMBER = 0
+    CLUSTER_NUMBER = 2
     FREQ = "D"
     PREDICTION_LENGTH = 30
     MODEL = 'xgboost'
@@ -115,20 +115,20 @@ if __name__ == '__main__':
     start_time = time.time()
     
     # Testing catboost models 
-    # results = xgboost(features)
-    results_sku = xgboost_by_product(features)
+    results = xgboost(features)
+    # results_sku = xgboost_by_product(features)
 
     # End timer
     end_time = time.time()
     duration = end_time - start_time
     print(f"Function took {duration:.2f} seconds to run")
 
-    test_df = test_df.merge(results_sku, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
-    # test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
+    # test_df = test_df.merge(results_sku, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
+    test_df = test_df.merge(results, on=['codigo_barras_sku', 'pdv_codigo','fecha_comercial','cant_vta'], how='left')
 
     summary_df = Metrics().create_summary_dataframe(test_df)
 
     print(summary_df['best_rmse'].value_counts())
     print(summary_df['best_mse'].value_counts())
-    summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_{MODEL}.csv', index=False)
+    summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_{MODEL}_pdv_sku.csv', index=False)
 
