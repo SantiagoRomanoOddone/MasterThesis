@@ -135,5 +135,4 @@ if __name__ == "__main__":
     if test_df is not None:
         summary_df = Metrics().create_summary_dataframe(test_df)
         print(summary_df['rmse_cant_vta_pred_sff_mean'].mean(), summary_df['rmse_cant_vta_pred_sff_mean'].median())
-        print(summary_df)
 
