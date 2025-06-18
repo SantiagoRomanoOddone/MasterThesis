@@ -5,21 +5,25 @@ from pathlib import Path
 from gluonts.torch import SimpleFeedForwardEstimator
 from metrics.metrics import Metrics
 from models.deep_learning.gluonts.functions import (
+    check_data_requirements, 
+    set_random_seed,
     prepare_dataset,
     train_best_model,
     make_predictions,
     process_results,
 )
 
-# TODO: IN PROGRESS
+
 def run_inference_for_skus(cluster_number: int, prediction_length: int, freq: str,
                             start_train, start_test, end_test, data_path: str, 
                             hyperparam_dir: str):
+    
+    set_random_seed(42)
 
     # Load and filter features
     features = pd.read_parquet(data_path)
     features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 
-                         'cant_vta','cluster_sku']]
+                         'cant_vta', 'cluster_sku']]
     features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
 
     features = features[features["cluster_sku"] == cluster_number]
@@ -28,27 +32,30 @@ def run_inference_for_skus(cluster_number: int, prediction_length: int, freq: st
     validation = features[features['fecha_comercial'] >= start_test]
     filtered = features[features['fecha_comercial'] < start_test]
 
-    # Load all JSON files
-    files = Path(hyperparam_dir).glob("best_hyperparameters_sku_*_cluster_*.json")
     all_final_results = []
-    for file in files:
-        with open(file) as f:
-            data = json.load(f)
 
-        # Extract SKU
-        filename = file.stem  # remove .json
-        sku = filename.split("_")[3]
+    unique_skus = filtered["codigo_barras_sku"].unique()
+    min_data_points = prediction_length + 100
+
+    for sku in unique_skus:
+        sku_data = filtered[filtered['codigo_barras_sku'] == sku]
+        if not check_data_requirements(sku_data, min_data_points):
+            print(f"Skipping SKU {sku} due to insufficient data.")
+            continue
+
+        json_path = Path(hyperparam_dir) / f"best_hyperparameters_sku_{sku}_cluster_{cluster_number}.json"
+        if not json_path.exists():
+            print(f"No hyperparameter file for SKU {sku}, skipping.")
+            continue
+
+        with open(json_path) as f:
+            data = json.load(f)
 
         print(f"Running inference for SKU {sku}")
 
-        sku_filtered = filtered[filtered['codigo_barras_sku'] == sku]
-        if sku_filtered.empty:
-            print(f"No training data for SKU {sku}, skipping.")
-            continue
-
         try:
             train_ds, val_ds, test_ds, ts_code, df_input = prepare_dataset(
-                data=sku_filtered,
+                data=sku_data,
                 start_train=start_train,
                 end_test=end_test,
                 freq=freq,
@@ -58,7 +65,6 @@ def run_inference_for_skus(cluster_number: int, prediction_length: int, freq: st
             print(f"Skipping SKU {sku} due to error in dataset prep: {e}")
             continue
 
-        # Train best model
         best_params = data["best_params"]
         best_epochs = data["best_epochs"]
         sff_fixed = {
@@ -106,14 +112,13 @@ def run_inference_for_skus(cluster_number: int, prediction_length: int, freq: st
 
     combined_results = pd.concat(all_final_results, ignore_index=True)
 
-    # Merge with true values
+    # Merge with real November data
     validation = validation[validation['codigo_barras_sku'].isin(combined_results['codigo_barras_sku'].unique())]
     test_df = pd.merge(validation, combined_results, 
                        on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], 
                        how='left')
     
     return test_df
-
 
 if __name__ == "__main__":
     test_df = run_inference_for_skus(
