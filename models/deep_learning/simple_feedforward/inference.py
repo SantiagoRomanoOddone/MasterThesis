@@ -121,7 +121,7 @@ def run_inference_for_skus(cluster_number: int, prediction_length: int, freq: st
     return test_df
 
 if __name__ == "__main__":
-    CLUSTER_NUMBER = 1
+    CLUSTER_NUMBER = 2
     MODEL = "sff"
     test_df = run_inference_for_skus(
         cluster_number=CLUSTER_NUMBER,
@@ -138,4 +138,5 @@ if __name__ == "__main__":
         summary_df = Metrics().create_summary_dataframe(test_df)
         print(summary_df['rmse_cant_vta_pred_sff_mean'].median(), summary_df['rmse_cant_vta_pred_sff_mean'].mean())
         summary_df.to_csv(f'results/inference/metrics_cluster_{CLUSTER_NUMBER}_{MODEL}.csv', index=False)
+        test_df.to_csv(f'results/inference/predictions_cluster_{CLUSTER_NUMBER}_{MODEL}.csv', index=False)
 
