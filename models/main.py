@@ -5,18 +5,18 @@ from models.mean_sale.mean_sale_main import mean_sale
 # from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
 
-from models.deep_learning.deepar.deepar import deepar_main
-from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
+# from models.deep_learning.deepar.deepar import deepar_main
+# from models.deep_learning.temporal_fusion_transformer.temporal_fusion_transformer import tft_main
 
 # testing
-from models.deep_learning.d_linear.d_linear import dlinear_main
-from models.deep_learning.deep_npts.deep_npts import deepnpts_main
-from models.deep_learning.patch_tst.patch_tst import patchtst_main
-from models.deep_learning.simple_feedforward.simple_feedforward import sff_main
-from models.deep_learning.wavenet.wavenet import wavenet_main
+# from models.deep_learning.d_linear.d_linear import dlinear_main
+# from models.deep_learning.deep_npts.deep_npts import deepnpts_main
+# from models.deep_learning.patch_tst.patch_tst import patchtst_main
+# from models.deep_learning.simple_feedforward.simple_feedforward import sff_main
+# from models.deep_learning.wavenet.wavenet import wavenet_main
 import numpy as np
 import time
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from metrics.metrics import Metrics
 import pandas as pd
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     START_TRAIN = pd.Timestamp("2022-12-01")
     START_TEST = pd.Timestamp("2024-11-01")
     END_TEST = pd.Timestamp("2024-11-30")
-    MODEL = 'deepar'
+    MODEL = 'mean_sale'  # Change this to the model you want to run
 
     DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
 
@@ -58,8 +58,8 @@ if __name__ == '__main__':
     # Start timer
     start_time = time.time()
 
-    # mean_sale_results = mean_sale(features)
-    deepar_results = deepar_main(features,CLUSTER_NUMBER)
+    mean_sale_results = mean_sale(features)
+    # deepar_results = deepar_main(features,CLUSTER_NUMBER)
     # tft_results = tft_main(features,CLUSTER_NUMBER)
     # d_linear_results = dlinear_main(features)
     # deep_npts_results = deepnpts_main(features)
@@ -88,8 +88,8 @@ if __name__ == '__main__':
     # test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    # test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
+    test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, d_linear_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, deep_npts_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
@@ -98,12 +98,13 @@ if __name__ == '__main__':
     # test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
 
 
-    summary_df = Metrics().create_summary_dataframe(test_df)
-    summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_{MODEL}_test.csv', index=False)
+    # summary_df = Metrics().create_summary_dataframe(test_df)
+    # summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_{MODEL}_test.csv', index=False)
 
-    print(summary_df['best_rmse'].value_counts())
-    print(summary_df['best_mse'].value_counts())
-
+    # print(summary_df['best_rmse'].value_counts())
+    # print(summary_df['best_mse'].value_counts())
+    print(test_df)
+    test_df.to_csv(f'results/inference/predictions_cluster_{CLUSTER_NUMBER}_{MODEL}.csv', index=False)
 
     # # Analysis 
     # plot_combinations(test_df, 10)
