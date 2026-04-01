@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # test_df = pd.merge(test_df, wavenet_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
 
 
-    # summary_df = Metrics().create_summary_dataframe(test_df)
+    summary_df = Metrics().create_summary_dataframe(test_df)
     # summary_df.to_csv(f'results/metrics_cluster_{CLUSTER_NUMBER}_{MODEL}_test.csv', index=False)
 
     # print(summary_df['best_rmse'].value_counts())
