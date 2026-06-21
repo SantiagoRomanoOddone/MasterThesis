@@ -40,10 +40,6 @@ if __name__ == '__main__':
     features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster_sku']]
     features = features.sort_values(["pdv_codigo", "codigo_barras_sku", "fecha_comercial"]).reset_index(drop=True)
     features = features[features["cluster_sku"] == CLUSTER_NUMBER]
-
-    # # Randomly select 10 SKUs
-    # random_skus = np.random.choice(features['codigo_barras_sku'].unique(), size=10, replace=False)
-    # features = features[features['codigo_barras_sku'].isin(random_skus)]
     
     # # Filter BY number of stores associated with the SKU
     filter = features.groupby('codigo_barras_sku').agg({'pdv_codigo': 'nunique'}).reset_index().sort_values('pdv_codigo', ascending=False).head(10)['codigo_barras_sku'].tolist()
