@@ -32,7 +32,7 @@ if __name__ == '__main__':
     START_TRAIN = pd.Timestamp("2022-12-01")
     START_TEST = pd.Timestamp("2024-11-01")
     END_TEST = pd.Timestamp("2024-11-30")
-    MODEL = 'mean_sale'  # Change this to the model you want to run
+    MODEL = 'mean_sale'  
 
     DATA_PATH = "/Users/sr/Documents/code/MasterThesis/cleaned_features.parquet"
 
