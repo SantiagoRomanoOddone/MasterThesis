@@ -1,6 +1,6 @@
 # from models.catboost_model.catboost_main import catboost, catboost_by_product
 from models.mean_sale.mean_sale_main import mean_sale
-# from models.xgboost.xgboost_main import xgboost, xgboost_by_product
+from models.xgboost.xgboost_main import xgboost, xgboost_by_product
 # from models.deep_learning.lstm.lstm_main import lstm
 # from models.lightgbm.lightgbm_main import lightgbm, lightgbm_by_product
 from train.splits.fixed_split import fixed_split
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     END_TEST = pd.Timestamp("2024-11-30")
     MODEL = 'mean_sale'  # Change this to the model you want to run
 
-    DATA_PATH = "/Users/santiagoromano/Documents/code/MasterThesis/features/processed/cleaned_features.parquet"
+    DATA_PATH = "/Users/sr/Documents/code/MasterThesis/cleaned_features.parquet"
 
     features = pd.read_parquet(DATA_PATH)
     features = features[['pdv_codigo', 'fecha_comercial', 'codigo_barras_sku', 'cant_vta', 'cluster_sku']]
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     # cb_results = catboost(features)
     # cb_results_sku = catboost_by_product(features)
     # xgb_results = xgboost(features)
-    # xgb_results_sku = xgboost_by_product(features)
+    xgb_results_sku = xgboost_by_product(features)
     # lgbm_results = lightgbm(features)
     # lgbm_results_sku = lightgbm_by_product(features)
     # lstm_results = lstm(features)
@@ -85,10 +85,10 @@ if __name__ == '__main__':
     # test_df = pd.merge(test_df, cb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, cb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, xgb_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    # test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    test_df = pd.merge(test_df, xgb_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, lgbm_results_sku, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
-    test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
+    # test_df = pd.merge(test_df, mean_sale_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial','cant_vta'], how='left')
     # test_df = pd.merge(test_df, deepar_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, tft_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
     # test_df = pd.merge(test_df, d_linear_results, on=['pdv_codigo', 'codigo_barras_sku', 'fecha_comercial'], how='left')
